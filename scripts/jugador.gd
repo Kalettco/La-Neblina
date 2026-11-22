@@ -1,3 +1,4 @@
+class_name Jugador
 extends CharacterBody2D
 ## Lía: movimiento lateral, salto y linterna (mecánica principal).
 ## Medidas para HD (1920 x 1080, casillas de 48 px).
@@ -33,8 +34,8 @@ var _buffer: float = 0.0
 var energia: float = 100.0
 var linterna_encendida: bool = false
 var angulo_cono: float = 0.0            # ángulo global del cono (radianes)
-var punto_inicio: Vector2 = Vector2.ZERO
 var _tiempo: float = 0.0                # reloj para el parpadeo del aura
+var _energia_avisada: float = -1.0      # último valor enviado al HUD
 
 # --- Animación (para cuando llegue el arte) ---
 var _estaba_en_suelo: bool = true
@@ -47,16 +48,13 @@ var entregando_luz: bool = false
 @onready var punto_linterna: Marker2D = $PuntoLinterna
 @onready var cono: PointLight2D = $PuntoLinterna/Cono
 @onready var aura: PointLight2D = $Aura
-@onready var barra_luz: ProgressBar = $HUD/BarraLuz
 
 
 func _ready() -> void:
 	add_to_group("jugador")
-	punto_inicio = global_position
 	energia = energia_maxima
 	_preparar_luces()
-	barra_luz.max_value = energia_maxima
-	_actualizar_barra()
+	Juego.registrar_jugador(self)
 
 
 func _physics_process(delta: float) -> void:
@@ -68,17 +66,8 @@ func _physics_process(delta: float) -> void:
 	_procesar_linterna(delta)
 	_actualizar_visual()
 	_actualizar_aura()
-	_actualizar_barra()
+	_avisar_energia()
 	_actualizar_animacion(delta)
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	# F11: alterna pantalla completa / ventana
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F11:
-		if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN:
-			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
-		else:
-			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 
 
 func _aplicar_gravedad(delta: float) -> void:
@@ -153,19 +142,28 @@ func esta_iluminado(punto_global: Vector2) -> bool:
 	return diferencia < apertura_luz
 
 
-## Muerte provisional (Fase 2): vuelve al inicio.
-## En la Fase 4 se agrega la pantalla de muerte y el último farol.
 func morir(mensaje: String) -> void:
-	print(mensaje)
-	reaparecer()
+	Juego.morir(mensaje)
 
 
-func reaparecer() -> void:
-	global_position = punto_inicio
+## La llama Juego: vuelve al último farol (o al inicio).
+func reaparecer(posicion: Vector2) -> void:
+	global_position = posicion
 	velocity = Vector2.ZERO
 	energia = clampf(maxf(ENERGIA_AL_REAPARECER, energia), 0.0, energia_maxima)
 	linterna_encendida = false
 	cono.enabled = false
+
+
+## Suma luz (frascos, guardianas). Nunca pasa del máximo.
+func recargar(cantidad: float) -> void:
+	energia = minf(energia + cantidad, energia_maxima)
+
+
+## Suma luz sin pasar de un límite (faroles: hasta 70).
+func recargar_hasta(cantidad: float, limite: float) -> void:
+	if energia < limite:
+		energia = minf(energia + cantidad, limite)
 
 
 # --- Visual ---
@@ -188,12 +186,11 @@ func _actualizar_aura() -> void:
 	aura.energy = brillo
 
 
-func _actualizar_barra() -> void:
-	barra_luz.value = energia
-	if energia < ENERGIA_BAJA:
-		barra_luz.modulate = Color(1.0, 0.45, 0.35)
-	else:
-		barra_luz.modulate = Color(1.0, 1.0, 1.0)
+## Avisa al HUD solo cuando la energía cambia.
+func _avisar_energia() -> void:
+	if energia != _energia_avisada:
+		_energia_avisada = energia
+		Juego.energia_cambiada.emit(energia, energia_maxima)
 
 
 func _preparar_luces() -> void:
@@ -201,7 +198,7 @@ func _preparar_luces() -> void:
 	cono.texture_scale = alcance_luz / (TAMANO_TEXTURA_CONO / 2.0)
 	cono.color = color_luz
 	cono.enabled = false
-	aura.texture = _crear_textura_aura()
+	aura.texture = Efectos.textura_radial()
 	aura.color = color_luz
 
 
@@ -226,21 +223,6 @@ func _crear_textura_cono() -> ImageTexture:
 			var alfa: float = borde * (1.0 - distancia / radio)
 			imagen.set_pixel(x, y, Color(1.0, 1.0, 1.0, alfa))
 	return ImageTexture.create_from_image(imagen)
-
-
-## Aura: degradado radial blanco -> transparente, 256x256.
-func _crear_textura_aura() -> GradientTexture2D:
-	var degradado: Gradient = Gradient.new()
-	degradado.set_color(0, Color(1.0, 1.0, 1.0, 1.0))
-	degradado.set_color(1, Color(1.0, 1.0, 1.0, 0.0))
-	var textura: GradientTexture2D = GradientTexture2D.new()
-	textura.gradient = degradado
-	textura.fill = GradientTexture2D.FILL_RADIAL
-	textura.fill_from = Vector2(0.5, 0.5)
-	textura.fill_to = Vector2(1.0, 0.5)
-	textura.width = 256
-	textura.height = 256
-	return textura
 
 
 # --- Animación (preparada para el AnimatedSprite2D "Sprite") ---

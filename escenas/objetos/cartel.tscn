@@ -1,0 +1,34 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/objetos/cartel.gd" id="1_cartel"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_cartel"]
+size = Vector2(48, 48)
+
+[node name="Cartel" type="Area2D"]
+collision_layer = 32
+collision_mask = 0
+monitoring = false
+script = ExtResource("1_cartel")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -24)
+shape = SubResource("RectangleShape2D_cartel")
+
+[node name="Visual" type="Node2D" parent="."]
+
+[node name="Poste" type="ColorRect" parent="Visual"]
+offset_left = -4.0
+offset_top = -24.0
+offset_right = 4.0
+mouse_filter = 2
+color = Color(0.3, 0.2, 0.12, 1)
+
+[node name="Tabla" type="ColorRect" parent="Visual"]
+offset_left = -22.0
+offset_top = -48.0
+offset_right = 22.0
+offset_bottom = -22.0
+pivot_offset = Vector2(22, 13)
+mouse_filter = 2
+color = Color(0.45, 0.3, 0.17, 1)

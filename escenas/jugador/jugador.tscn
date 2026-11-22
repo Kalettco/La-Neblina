@@ -45,15 +45,3 @@ position_smoothing_enabled = true
 position = Vector2(0, -42)
 energy = 0.9
 texture_scale = 1.2
-
-[node name="HUD" type="CanvasLayer" parent="."]
-
-[node name="BarraLuz" type="ProgressBar" parent="HUD"]
-offset_left = 40.0
-offset_top = 40.0
-offset_right = 400.0
-offset_bottom = 68.0
-mouse_filter = 2
-max_value = 100.0
-value = 100.0
-show_percentage = false

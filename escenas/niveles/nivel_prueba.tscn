@@ -1,9 +1,20 @@
 [gd_scene format=3 uid="uid://b2hdaixojujhh"]
 
 [ext_resource type="PackedScene" uid="uid://b3vwf14y6q2a1" path="res://escenas/jugador/jugador.tscn" id="1_l0ku4"]
+[ext_resource type="PackedScene" path="res://escenas/ui/hud.tscn" id="2_hud"]
+[ext_resource type="PackedScene" path="res://escenas/objetos/frasco.tscn" id="3_frasco"]
+[ext_resource type="PackedScene" path="res://escenas/objetos/farol.tscn" id="4_farol"]
+[ext_resource type="PackedScene" path="res://escenas/objetos/plataforma_luz.tscn" id="5_plataforma"]
+[ext_resource type="PackedScene" path="res://escenas/objetos/cartel.tscn" id="6_cartel"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_fabxv"]
-size = Vector2(3840, 96)
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_sueloa"]
+size = Vector2(2400, 96)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_suelob"]
+size = Vector2(1104, 96)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_foso"]
+size = Vector2(336, 48)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ooo5k"]
 size = Vector2(300, 48)
@@ -16,15 +27,43 @@ color = Color(0.101960786, 0.13333334, 0.21960784, 1)
 [node name="Suelo" type="StaticBody2D" parent="." unique_id=1576541796]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Suelo" unique_id=1444552086]
-position = Vector2(1920, 1000)
-shape = SubResource("RectangleShape2D_fabxv")
+position = Vector2(1200, 1000)
+shape = SubResource("RectangleShape2D_sueloa")
 
 [node name="ColorRect" type="ColorRect" parent="Suelo" unique_id=1858991212]
+offset_top = 952.0
+offset_right = 2400.0
+offset_bottom = 1048.0
+mouse_filter = 2
+color = Color(0.27058825, 0.49803922, 0.23921569, 1)
+
+[node name="SueloB" type="StaticBody2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SueloB"]
+position = Vector2(3288, 1000)
+shape = SubResource("RectangleShape2D_suelob")
+
+[node name="ColorRect" type="ColorRect" parent="SueloB"]
+offset_left = 2736.0
 offset_top = 952.0
 offset_right = 3840.0
 offset_bottom = 1048.0
 mouse_filter = 2
 color = Color(0.27058825, 0.49803922, 0.23921569, 1)
+
+[node name="FondoFoso" type="StaticBody2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="FondoFoso"]
+position = Vector2(2568, 1072)
+shape = SubResource("RectangleShape2D_foso")
+
+[node name="ColorRect" type="ColorRect" parent="FondoFoso"]
+offset_left = 2400.0
+offset_top = 1048.0
+offset_right = 2736.0
+offset_bottom = 1096.0
+mouse_filter = 2
+color = Color(0.17, 0.3, 0.16, 1)
 
 [node name="Plataforma" type="StaticBody2D" parent="." unique_id=1767103597]
 
@@ -68,5 +107,26 @@ offset_bottom = 727.0
 mouse_filter = 2
 color = Color(0.5607075, 0.22997564, 1.4439226e-07, 1)
 
+[node name="Cartel" parent="." instance=ExtResource("6_cartel")]
+position = Vector2(420, 952)
+texto = "Prueba de la Fase 3: toca el frasco, enciende el farol y cruza el foso iluminando las plataformas escondidas."
+
+[node name="Frasco" parent="." instance=ExtResource("3_frasco")]
+position = Vector2(1150, 952)
+
+[node name="Farol" parent="." instance=ExtResource("4_farol")]
+position = Vector2(2200, 952)
+
+[node name="PlataformaLuz1" parent="." instance=ExtResource("5_plataforma")]
+position = Vector2(2520, 952)
+
+[node name="PlataformaLuz2" parent="." instance=ExtResource("5_plataforma")]
+position = Vector2(2568, 952)
+
+[node name="PlataformaLuz3" parent="." instance=ExtResource("5_plataforma")]
+position = Vector2(2616, 952)
+
 [node name="Jugador" parent="." unique_id=3176774 instance=ExtResource("1_l0ku4")]
 position = Vector2(200, 900)
+
+[node name="HUD" parent="." instance=ExtResource("2_hud")]

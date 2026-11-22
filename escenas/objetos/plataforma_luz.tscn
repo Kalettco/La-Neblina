@@ -1,0 +1,39 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/objetos/plataforma_luz.gd" id="1_plataforma"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_plataforma"]
+size = Vector2(48, 24)
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_brillo"]
+light_mode = 1
+
+[node name="PlataformaLuz" type="StaticBody2D"]
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("1_plataforma")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -36)
+shape = SubResource("RectangleShape2D_plataforma")
+one_way_collision = true
+
+[node name="Visual" type="Node2D" parent="."]
+
+[node name="Pieza" type="ColorRect" parent="Visual"]
+material = SubResource("CanvasItemMaterial_brillo")
+offset_left = -24.0
+offset_top = -48.0
+offset_right = 24.0
+offset_bottom = -24.0
+mouse_filter = 2
+color = Color(1, 0.82, 0.35, 1)
+
+[node name="Borde" type="ColorRect" parent="Visual"]
+material = SubResource("CanvasItemMaterial_brillo")
+offset_left = -24.0
+offset_top = -48.0
+offset_right = 24.0
+offset_bottom = -44.0
+mouse_filter = 2
+color = Color(1, 0.96, 0.75, 1)
