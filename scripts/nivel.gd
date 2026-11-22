@@ -38,6 +38,8 @@ const ESCENA_SALIDA: PackedScene = preload("res://escenas/objetos/salida.tscn")
 const ESCENA_SOMBRA: PackedScene = preload("res://escenas/enemigos/sombra.tscn")
 const ESCENA_LANZADORA: PackedScene = preload("res://escenas/enemigos/lanzadora.tscn")
 const ESCENA_CRISTAL: PackedScene = preload("res://escenas/objetos/cristal.tscn")
+const ESCENA_PUERTA_ARENA: PackedScene = preload("res://escenas/objetos/puerta_arena.tscn")
+const ESCENA_ARENA: PackedScene = preload("res://escenas/objetos/arena.tscn")
 const ESCENA_GUARDIANA: PackedScene = preload("res://escenas/objetos/guardiana.tscn")
 const ESCENA_ARBOL: PackedScene = preload("res://escenas/objetos/arbol_madre.tscn")
 
@@ -438,3 +440,31 @@ func _siluetas(azar: RandomNumberGenerator, color: Color, piso: float,
 func cristal(x0: int, x1: int, y: int) -> void:
 	for x in range(x0, x1 + 1):
 		_colocar(ESCENA_CRISTAL.instantiate(), x, y, objetos)
+
+
+## Raíz que habla: textos de la voz del Árbol Madre (acto 2).
+func nota_raiz(x: int, y: int, texto: String) -> void:
+	var nuevo: Node2D = ESCENA_CARTEL.instantiate()
+	nuevo.set("texto", texto)
+	nuevo.set("es_raiz", true)
+	_colocar(nuevo, x, y, objetos)
+
+
+## Puerta de arena de 1 casilla de ancho, filas y0..y1. "cerrada" = salida de la arena.
+func puerta_arena(x: int, y0: int, y1: int, id: String, cerrada: bool = false) -> void:
+	var nueva: Node2D = ESCENA_PUERTA_ARENA.instantiate()
+	nueva.set("id_arena", id)
+	nueva.set("cerrada_al_inicio", cerrada)
+	nueva.set("alto_casillas", y1 - y0 + 1)
+	nueva.position = Vector2(x * CASILLA, y0 * CASILLA)
+	objetos.add_child(nueva)
+
+
+## Arena de oleadas entre las columnas x0 y x1 (ver formato en scripts/objetos/arena.gd).
+func arena(x0: int, x1: int, id: String, oleadas: Array) -> void:
+	var nueva: Node2D = ESCENA_ARENA.instantiate()
+	nueva.set("id_arena", id)
+	nueva.set("x0", x0)
+	nueva.set("x1", x1)
+	nueva.set("oleadas", oleadas)
+	enemigos.add_child(nueva)

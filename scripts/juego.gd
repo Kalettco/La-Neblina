@@ -411,6 +411,9 @@ func reaparecer() -> void:
 	# Los proyectiles enemigos en vuelo desaparecen
 	for proyectil: Node in get_tree().get_nodes_in_group("proyectiles_enemigos"):
 		proyectil.queue_free()
+	# Las arenas sin vencer vuelven a empezar
+	for arena: Node in get_tree().get_nodes_in_group("arenas"):
+		arena.call("reiniciar")
 	# Los frascos agarrados después del último farol vuelven a aparecer
 	for frasco: Node in get_tree().get_nodes_in_group("frascos"):
 		frasco.call("restaurar")

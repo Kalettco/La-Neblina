@@ -14,7 +14,7 @@ func _ready() -> void:
 
 func _esta_iluminada() -> bool:
 	for x: float in [-20.0, 0.0, 20.0]:
-		if Juego.campo_ilumina(to_global(Vector2(x, CENTRO_Y))):
+		if Juego.campo_ilumina(to_global(Vector2(x, PUNTO_LUZ_Y))):
 			return true
 	return false
 

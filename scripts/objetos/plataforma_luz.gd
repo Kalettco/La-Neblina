@@ -10,6 +10,9 @@ const PERIODO_DESTELLO: float = 2.5       # pista mientras está oculta
 const DURACION_DESTELLO: float = 0.5
 const ALFA_DESTELLO: float = 0.14
 const CENTRO_Y: float = -36.0             # centro de la pieza (mitad superior de la casilla)
+## Altura donde se mide la luz: justo bajo la SUPERFICIE de la pieza. Así la regla de
+## los pies (60 px alrededor de la linterna) siempre alcanza la pieza donde está parada Lía.
+const PUNTO_LUZ_Y: float = -46.0
 
 @onready var colision: CollisionShape2D = $CollisionShape2D
 @onready var visual: Node2D = $Visual
@@ -43,7 +46,7 @@ func _esta_iluminada() -> bool:
 	if not is_instance_valid(jugador):
 		return false
 	for x: float in [-20.0, 0.0, 20.0]:
-		if Juego.esta_iluminado(to_global(Vector2(x, CENTRO_Y))):
+		if Juego.esta_iluminado(to_global(Vector2(x, PUNTO_LUZ_Y))):
 			return true
 	return false
 
