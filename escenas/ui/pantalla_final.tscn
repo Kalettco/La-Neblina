@@ -1,0 +1,68 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/pantalla_final.gd" id="1_final"]
+
+[node name="PantallaFinal" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_final")
+
+[node name="Fondo" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.019607844, 0.03529412, 0.047058824, 1)
+
+[node name="Caja" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -700.0
+offset_top = -320.0
+offset_right = 700.0
+offset_bottom = 320.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 30
+alignment = 1
+
+[node name="Titulo" type="Label" parent="Caja"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9098039, 0.84705883, 0.41568628, 1)
+theme_override_font_sizes/font_size = 96
+text = "Fin"
+horizontal_alignment = 1
+
+[node name="Subtitulo" type="Label" parent="Caja"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.72, 0.76, 1)
+theme_override_font_sizes/font_size = 34
+text = "Gracias por jugar Neblina"
+horizontal_alignment = 1
+
+[node name="Estadisticas" type="Label" parent="Caja"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.9, 0.86, 1)
+theme_override_constants/line_spacing = 14
+theme_override_font_sizes/font_size = 40
+horizontal_alignment = 1
+
+[node name="Ayuda" type="Label" parent="Caja"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.45, 0.47, 0.5, 1)
+theme_override_font_sizes/font_size = 30
+text = "Enter o clic: volver al menú"
+horizontal_alignment = 1

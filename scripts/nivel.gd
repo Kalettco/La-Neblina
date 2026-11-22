@@ -21,6 +21,7 @@ const DATOS: Array[GDScript] = [
 
 const ESCENA_JUGADOR: PackedScene = preload("res://escenas/jugador/jugador.tscn")
 const ESCENA_HUD: PackedScene = preload("res://escenas/ui/hud.tscn")
+const ESCENA_PAUSA: PackedScene = preload("res://escenas/ui/pausa.tscn")
 const ESCENA_FRASCO: PackedScene = preload("res://escenas/objetos/frasco.tscn")
 const ESCENA_FAROL: PackedScene = preload("res://escenas/objetos/farol.tscn")
 const ESCENA_FLOR: PackedScene = preload("res://escenas/objetos/flor.tscn")
@@ -76,9 +77,11 @@ func _ready() -> void:
 	Juego.iniciar_nivel(self)
 	datos.construir(self)
 	_pintar_terreno()
+	_crear_bordes()
 	_crear_fondo()
 	_crear_jugador()
 	add_child(ESCENA_HUD.instantiate())
+	add_child(ESCENA_PAUSA.instantiate())
 	Juego.limite_vacio = alto * CASILLA + 200.0
 	_actualizar_zona(1.0)
 
@@ -217,6 +220,23 @@ func _cartel(x: int, y: int, texto: String, es_nota: bool) -> void:
 	nuevo.set("texto", texto)
 	nuevo.set("es_nota", es_nota)
 	_colocar(nuevo, x, y, objetos)
+
+
+## Paredes invisibles a la izquierda y derecha del nivel: Lía no puede salirse del mapa.
+func _crear_bordes() -> void:
+	var bordes: StaticBody2D = StaticBody2D.new()
+	bordes.name = "Bordes"
+	bordes.collision_layer = 1   # mundo
+	bordes.collision_mask = 0
+	var alto_pared: float = alto * CASILLA + 2400.0
+	for x: float in [-CASILLA / 2.0, ancho * CASILLA + CASILLA / 2.0]:
+		var forma: RectangleShape2D = RectangleShape2D.new()
+		forma.size = Vector2(CASILLA, alto_pared)
+		var colision: CollisionShape2D = CollisionShape2D.new()
+		colision.shape = forma
+		colision.position = Vector2(x, alto * CASILLA - alto_pared / 2.0 + 400.0)
+		bordes.add_child(colision)
+	add_child(bordes)
 
 
 func _crear_jugador() -> void:

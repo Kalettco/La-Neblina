@@ -15,6 +15,15 @@ const DISTANCIA_CARTEL_Y: float = 3.0 * 48.0
 const DURACION_MUERTE: float = 1.5
 const ESCENA_MUERTE: PackedScene = preload("res://escenas/ui/pantalla_muerte.tscn")
 const RUTA_ESCENA_NIVEL: String = "res://escenas/niveles/nivel.tscn"
+const RUTA_TITULO: String = "res://escenas/ui/pantalla_titulo.tscn"
+const RUTA_HISTORIA: String = "res://escenas/ui/pantalla_historia.tscn"
+const RUTA_TARJETA: String = "res://escenas/ui/tarjeta_nivel.tscn"
+const RUTA_FINAL: String = "res://escenas/ui/pantalla_final.tscn"
+
+# Historia que se está mostrando (la lee pantalla_historia)
+var historia_paginas: Array = []
+var historia_opciones: Dictionary = {}
+var _historia_siguiente: Callable = Callable()
 
 var nivel_actual: int = 0          # 0 = tutorial, 1 = bosque
 var estadisticas: Dictionary = {}
@@ -58,12 +67,9 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
-	# F11: alterna pantalla completa / ventana
+	# F11: alterna pantalla completa / ventana (y lo guarda en la configuración)
 	if event.keycode == KEY_F11:
-		if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN:
-			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
-		else:
-			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+		Configuracion.alternar_pantalla_completa()
 	# F9 (solo durante el desarrollo): saltar al nivel 2 para probarlo
 	elif event.keycode == KEY_F9 and OS.is_debug_build():
 		ir_a_nivel(1)
@@ -71,9 +77,74 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # --- Partida y estadísticas ---
 
+## Título -> historia INTRO -> tarjeta del nivel 1.
 func nueva_partida() -> void:
 	nivel_actual = 0
 	_reiniciar_estadisticas()
+	mostrar_historia(Textos.INTRO, mostrar_tarjeta.bind(0))
+
+
+## Título (C) -> tarjeta del nivel 2.
+func continuar_partida() -> void:
+	_reiniciar_estadisticas()
+	mostrar_tarjeta(1)
+
+
+func hay_partida_guardada() -> bool:
+	return cargar_progreso() >= 1
+
+
+# --- Flujo de pantallas ---
+
+## Muestra páginas de historia; al terminar llama a "siguiente".
+## opciones: {"linterna_apagada": [índices], "dorada": [índices]}
+func mostrar_historia(paginas: Array, siguiente: Callable, opciones: Dictionary = {}) -> void:
+	historia_paginas = paginas
+	historia_opciones = opciones
+	_historia_siguiente = siguiente
+	_cambiar_escena(RUTA_HISTORIA)
+
+
+## La llama pantalla_historia al pasar la última página.
+func terminar_historia() -> void:
+	if _historia_siguiente.is_valid():
+		_historia_siguiente.call()
+
+
+## Tarjeta con nombre y objetivo del nivel; Enter/clic empieza el nivel.
+func mostrar_tarjeta(indice: int) -> void:
+	nivel_actual = indice
+	_cambiar_escena(RUTA_TARJETA)
+
+
+func ir_al_menu() -> void:
+	_cambiar_escena(RUTA_TITULO)
+
+
+func mostrar_pantalla_final() -> void:
+	_cambiar_escena(RUTA_FINAL)
+
+
+func _cambiar_escena(ruta: String) -> void:
+	jugador = null
+	muriendo = false
+	get_tree().paused = false
+	get_tree().change_scene_to_file(ruta)
+
+
+## true si el evento es "Enter o clic" (para avanzar pantallas).
+func es_avanzar(event: InputEvent) -> bool:
+	if event is InputEventMouseButton:
+		return event.pressed and event.button_index == MOUSE_BUTTON_LEFT
+	if event is InputEventKey:
+		return event.pressed and not event.echo and (event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER or event.keycode == KEY_SPACE)
+	return false
+
+
+## Tiempo en formato M:SS.
+func tiempo_texto() -> String:
+	var segundos: int = int(estadisticas["tiempo_juego"])
+	return "%d:%02d" % [segundos / 60, segundos % 60]
 
 
 func _reiniciar_estadisticas() -> void:
@@ -138,22 +209,22 @@ func iniciar_nivel(nuevo_nivel: Node) -> void:
 ## Carga el nivel i (0 = tutorial, 1 = bosque) con el constructor de niveles.
 func ir_a_nivel(indice: int) -> void:
 	nivel_actual = indice
-	jugador = null
-	muriendo = false
 	guardar_progreso()
-	get_tree().paused = false
-	get_tree().change_scene_to_file(RUTA_ESCENA_NIVEL)
+	_cambiar_escena(RUTA_ESCENA_NIVEL)
 
 
-## Lía llegó a la salida del tutorial.
-## (En la Fase 7 aquí se muestra antes la historia PUENTE.)
+## Lía llegó a la salida del tutorial: historia PUENTE -> tarjeta del nivel 2.
 func completar_nivel() -> void:
 	if nivel_terminado:
 		return
 	nivel_terminado = true
+	# Lía se queda quieta en la salida: no puede caerse ni recibir daño
+	if is_instance_valid(jugador):
+		jugador.bloqueado = true
+		jugador.invulnerable = 99.0
 	toast("Llegaste al final del sendero.")
 	await get_tree().create_timer(1.5).timeout
-	ir_a_nivel(nivel_actual + 1)
+	mostrar_historia(Textos.PUENTE, mostrar_tarjeta.bind(nivel_actual + 1))
 
 
 func rescatar_guardiana() -> void:
@@ -165,13 +236,13 @@ func guardianas() -> int:
 	return estadisticas["guardianas"]
 
 
-## El Árbol Madre sanó: fin del juego.
-## (En la Fase 7 aquí se muestra la historia FINAL y la pantalla de estadísticas.)
+## El Árbol Madre sanó: historia FINAL -> pantalla final con estadísticas.
 func completar_juego() -> void:
 	if nivel_terminado:
 		return
 	nivel_terminado = true
-	toast("El Árbol Madre sanó. Papá está libre.")
+	await get_tree().create_timer(1.0).timeout
+	mostrar_historia(Textos.FINAL, mostrar_pantalla_final, Textos.OPCIONES_FINAL)
 
 
 func cambiar_zona(nombre: String) -> void:
@@ -211,7 +282,8 @@ func obtener_punto_reaparicion() -> Vector2:
 
 ## Lía se desmaya, la pantalla se oscurece con el mensaje y vuelve al último farol.
 func morir(mensaje: String) -> void:
-	if muriendo or not is_instance_valid(jugador):
+	# Con el nivel ya terminado (salida o Árbol Madre) no se puede morir
+	if muriendo or nivel_terminado or not is_instance_valid(jugador):
 		return
 	muriendo = true
 	estadisticas["muertes"] += 1

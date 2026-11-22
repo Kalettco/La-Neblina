@@ -2,6 +2,35 @@ extends Node
 ## Autoload "Audio": todavía no hay sonidos.
 ## El juego ya llama estas funciones en los momentos correctos;
 ## cuando lleguen los archivos de audio solo hay que llenarlas.
+##
+## Buses de audio (se crean solos si no existen):
+##   "Musica"   -> la música (usar bus = "Musica" en los AudioStreamPlayer de música)
+##   "Ambiente" -> sonidos de ambiente y efectos (bus = "Ambiente")
+## La configuración (Configuracion.modo_sonido) silencia cada bus.
+
+const BUS_MUSICA: String = "Musica"
+const BUS_AMBIENTE: String = "Ambiente"
+
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	_crear_bus(BUS_MUSICA)
+	_crear_bus(BUS_AMBIENTE)
+
+
+func _crear_bus(nombre: String) -> void:
+	if AudioServer.get_bus_index(nombre) != -1:
+		return
+	AudioServer.add_bus()
+	var indice: int = AudioServer.bus_count - 1
+	AudioServer.set_bus_name(indice, nombre)
+	AudioServer.set_bus_send(indice, "Master")
+
+
+## Enciende o silencia la música y el sonido de ambiente.
+func configurar(musica_encendida: bool, ambiente_encendido: bool) -> void:
+	AudioServer.set_bus_mute(AudioServer.get_bus_index(BUS_MUSICA), not musica_encendida)
+	AudioServer.set_bus_mute(AudioServer.get_bus_index(BUS_AMBIENTE), not ambiente_encendido)
 
 
 func sfx_salto() -> void:

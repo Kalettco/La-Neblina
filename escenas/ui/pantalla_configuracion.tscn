@@ -1,0 +1,84 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/pantalla_configuracion.gd" id="1_config"]
+[ext_resource type="Theme" path="res://escenas/ui/tema_menu.tres" id="2_tema"]
+
+[node name="PantallaConfiguracion" type="CanvasLayer"]
+layer = 40
+script = ExtResource("1_config")
+
+[node name="Fondo" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.02, 0.03, 0.05, 0.94)
+
+[node name="Menu" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = ExtResource("2_tema")
+
+[node name="Caja" type="VBoxContainer" parent="Menu"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -500.0
+offset_top = -340.0
+offset_right = 500.0
+offset_bottom = 340.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 26
+alignment = 1
+
+[node name="Titulo" type="Label" parent="Menu/Caja"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9098039, 0.84705883, 0.41568628, 1)
+theme_override_font_sizes/font_size = 80
+text = "Configuración"
+horizontal_alignment = 1
+
+[node name="Separador" type="Control" parent="Menu/Caja"]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Pantalla" type="Button" parent="Menu/Caja"]
+layout_mode = 2
+text = "Pantalla: En ventana"
+
+[node name="Tamano" type="Button" parent="Menu/Caja"]
+layout_mode = 2
+text = "Tamaño de ventana"
+
+[node name="Sonido" type="Button" parent="Menu/Caja"]
+layout_mode = 2
+text = "Sonido: Música y ambiente"
+
+[node name="Nota" type="Label" parent="Menu/Caja"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.52, 0.56, 1)
+theme_override_font_sizes/font_size = 26
+text = "Haz clic en una opción para cambiarla. F11 también alterna la pantalla completa."
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Separador2" type="Control" parent="Menu/Caja"]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Volver" type="Button" parent="Menu/Caja"]
+layout_mode = 2
+text = "Volver"

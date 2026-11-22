@@ -1,0 +1,368 @@
+================================================================================
+  NEBLINA - PARTE 2: "EL ALMA DE ANDRÉS"
+  Ampliación del juego para Claude Code
+  (complementa a docs/instrucciones_claude_code.txt; léelo primero)
+================================================================================
+
+MOTIVO DEL CAMBIO
+  El usuario terminó los niveles 1 y 2 en menos de 5 minutos. La tarea exige
+  10 minutos o más y el final se siente como un tutorial. Por eso:
+    - El juego NO termina en el Árbol Madre.
+    - Se agrega un ACTO 2 con 4 niveles nuevos (niveles 3 a 6), cada uno
+      dividido en 4 zonas, con dos habilidades nuevas, enemigos que atacan,
+      niveles que bajan y un jefe final.
+  Duración objetivo del juego completo: 20 minutos o más para un jugador
+  normal (cada nivel nuevo: 3 a 5 minutos la primera vez).
+
+REGLAS DE TRABAJO (las mismas de la parte 1)
+  - Antes de empezar, revisa el estado real del proyecto. Ya están hechas las
+    fases 2 a 6. El usuario además agregó en la Fase 6:
+      * los frascos reaparecen al morir,
+      * "recarga con clic derecho",
+      * las plataformas de luz de la copa duran 3 veces más.
+  - Trabaja por fases (sección 9), una a la vez. Al terminar cada una: resumen
+    corto en español, lista de qué probar con F5, esperar confirmación, commit:
+        git add .   /   git commit -m "Fase N: ..."   /   git push
+    (Recuérdale al usuario el "git add ." porque lo ha olvidado.)
+  - Godot está abierto: pide guardar todo antes de editar escenas y avisa que
+    elija "Recargar" cuando Godot lo pregunte.
+  - Todo sigue sin arte: marcadores de colores con las medidas de la sección 8.
+
+--------------------------------------------------------------------------------
+1. DECISIONES POR DEFECTO (CONFIRMA CON EL USUARIO ANTES DE LA FASE 8)
+--------------------------------------------------------------------------------
+  a) CONTROLES NUEVOS
+       Disparo de luz ........ clic DERECHO (toque)          acción: disparar
+       Campo de luz .......... tecla Q, o clic izquierdo + clic derecho
+                               presionados casi a la vez (ventana 0,15 s)
+                                                             acción: campo_luz
+     CONFLICTO: hoy el clic derecho hace la "recarga" que agregó el usuario.
+     Pregúntale qué hace exactamente esa recarga y propón moverla a la
+     tecla R (acción: recargar). No lo cambies sin su confirmación.
+  b) CAMPO DE LUZ: dura 4 s, se puede volver a usar cada 10 s, cuesta 15 de luz.
+     (El usuario dijo "3 a 5 s de duración" y "cada 5 a 10 s": son valores
+      @export para ajustarlos fácilmente.)
+  c) CANTIDAD DE NIVELES NUEVOS: 4 (niveles 3, 4, 5 y 6), cada uno con 4 zonas.
+
+--------------------------------------------------------------------------------
+2. NUEVA HISTORIA (ACTO 2)
+--------------------------------------------------------------------------------
+Al entregar la luz en el Árbol Madre (final del nivel 2), YA NO aparece el
+final del juego. En su lugar, después de la curación:
+
+HISTORIA "EL ÁRBOL HABLA" (reemplaza a la historia FINAL antigua en este punto)
+ 1. "El Árbol Madre brilló de nuevo. Andrés estaba libre, pero sus ojos seguían vacíos, como una linterna sin luciérnagas."
+ 2. "—Pequeña —dijo una voz desde las raíces—. Tu padre volvió, pero la Bruma se quedó con su alma."
+ 3. "—Se la llevó al fondo de la tierra, al Corazón de la Bruma. Allá abajo la luz no solo ilumina: también lucha."
+ 4. "Las raíces encendieron una chispa nueva dentro de la linterna. Ahora su luz podía disparar."
+ 5. "Lía dejó a su papá al cuidado del árbol, apretó la linterna y bajó por las raíces."
+ -> Pantalla de habilidad nueva: "NUEVA HABILIDAD: Disparo de luz" +
+    "Haz clic derecho para lanzar una chispa de luz hacia el mouse. Cada
+     disparo gasta un poco de luz." (Enter/clic para continuar)
+ -> Nivel 3
+
+HISTORIA "LA LUCIÉRNAGA REINA" (entre el nivel 4 y el 5)
+ 1. "En el fondo de la grieta, donde ni la Bruma se atrevía a entrar, dormía una luciérnaga enorme."
+ 2. "—Llevas la linterna de tu abuela —susurró la Luciérnaga Reina—. Ella también bajó hasta aquí, hace muchos años."
+ 3. "—Toma mi luz. Cuando la oscuridad sea total, haz que todo brille a la vez."
+ -> Pantalla de habilidad: "NUEVA HABILIDAD: Campo de luz" +
+    "Presiona Q (o clic izquierdo y derecho a la vez) para iluminar todo a tu
+     alrededor durante unos segundos. Después necesita recargarse."
+ -> Nivel 5
+
+HISTORIA "ANTES DEL CORAZÓN" (entre el nivel 5 y el 6)
+ 1. "Las cavernas terminaban en una puerta de raíces negras que latía como un corazón."
+ 2. "Del otro lado se escuchaba la voz de su papá, muy lejos, llamándola."
+ 3. "Lía respiró hondo. Ya no le temía a la oscuridad. Ahora la oscuridad le temía a ella."
+ -> Nivel 6
+
+HISTORIA FINAL NUEVA (después de vencer al jefe)
+ 1. "El Devorador de Luz se deshizo en mil chispas. Entre ellas flotaba una luz dorada y tibia: el alma de Andrés."
+ 2. "Lía la guardó en la linterna y subió de regreso, siguiendo a las luciérnagas que volvían al bosque."
+ 3. "Bajo el Árbol Madre, Andrés abrió los ojos y la abrazó. Esta vez la reconoció."
+ 4. "Las luciérnagas volvieron a llenar el bosque nuboso. La Bruma no regresó nunca más."
+ 5. "Esa noche, en San Isidro de las Nubes, Lía apagó la luz para dormir."   (en dorado)
+ -> Pantalla final con estadísticas (agrega: "Sombras destruidas: N").
+
+Mantén los textos de la parte 1 (intro y puente) sin cambios.
+
+--------------------------------------------------------------------------------
+3. HABILIDAD 1: DISPARO DE LUZ (desde el inicio del nivel 3)
+--------------------------------------------------------------------------------
+  - Acción "disparar" (clic derecho). Disponible solo si Juego.tiene_disparo.
+  - Lanza una "chispa" (Area2D, capa nueva o capa 5 con máscara a sombras y
+    mundo) desde PuntoLinterna hacia get_global_mouse_position().
+  - Valores (@export):
+        costo_disparo        6 de luz
+        cadencia             0,30 s entre disparos
+        velocidad_chispa     1100 px/s
+        alcance_chispa       900 px (luego se apaga con un destello)
+        dano_chispa          1
+  - No se puede disparar con menos de 6 de luz ni durante la entrega de luz.
+  - La chispa lleva una PointLight2D pequeña (~90 px) y CUENTA COMO LUZ
+    mientras vuela: lo que toca su radio de 60 px se considera iluminado
+    (flores, braseros, plataformas de luz). Así se pueden encender braseros
+    lejanos: úsalo en el diseño de niveles.
+  - Choca con el mundo (desaparece con chispas) y con enemigos (les hace daño).
+  - Marcador: círculo amarillo de 16 px con estela.
+  - Estadística nueva: sombras_destruidas.
+
+--------------------------------------------------------------------------------
+4. HABILIDAD 2: CAMPO DE LUZ (desde el inicio del nivel 5)
+--------------------------------------------------------------------------------
+  - Acción "campo_luz" (Q) o clic izquierdo + clic derecho a la vez (ventana
+    de 0,15 s; si se detecta la combinación, no cuenta como disparo y se
+    devuelve el costo si ya se disparó).
+  - Disponible solo si Juego.tiene_campo y el tiempo de recarga terminó.
+  - Valores (@export): duracion_campo 4 s · recarga_campo 10 s · costo_campo 15
+  - Al activarse:
+      * Onda expansiva circular desde Lía hasta 1100 px en 0,3 s.
+      * Durante la duración, TODO lo que esté dentro de 1100 px de Lía cuenta
+        como iluminado (plataformas de luz, flores, braseros, cristales).
+      * El CanvasModulate pasa a un tono claro (#9aa6c8) y vuelve al color de
+        la zona al terminar (fundido de 0,5 s).
+      * Las sombras dentro del radio quedan asustadas toda la duración.
+      * El pulso inicial hace 2 de daño a todos los enemigos del radio y
+        destruye los proyectiles enemigos.
+      * Funciona en el aire (no interrumpe el salto).
+  - HUD: ícono circular junto a la barra de luz, se llena mientras recarga
+    y brilla cuando está listo.
+  - Objeto nuevo que solo responde al campo: CRISTAL (sección 6).
+
+--------------------------------------------------------------------------------
+5. ENEMIGOS DEL ACTO 2 (TODOS PUEDEN SER DESTRUIDOS)
+--------------------------------------------------------------------------------
+Regla general nueva:
+  - Todos los enemigos tienen "vida". Al llegar a 0 se deshacen en humo y
+    sueltan una luciérnaga pequeña que recarga +5 de luz al tocarla
+    (se mueve sola hacia Lía si está a menos de 150 px).
+  - Al recibir daño: parpadean en blanco 0,1 s y retroceden un poco.
+  - La linterna (clic izquierdo) sigue asustándolos pero NO les hace daño;
+    el daño viene de la chispa y del pulso del campo.
+  - Daño a Lía: contacto -25 de luz, proyectil -12. Invulnerabilidad 1,2 s.
+  - En los niveles 1 y 2 NO se cambia nada (allí Lía no puede disparar).
+
+5.1 SOMBRA (la que ya existe)  · vida 2 · 72x72
+    Igual que ahora (patrulla / cazadora). En el acto 2 las cazadoras, cuando
+    están a menos de 4 casillas, hacen una EMBESTIDA: se detienen 0,5 s
+    (avisan: ojos más brillantes) y se lanzan hacia Lía a 500 px/s por 0,4 s.
+
+5.2 LANZADORA DE BRUMA  · vida 3 · 72x96 · NUEVA
+    Flota en un punto (oscila +-8 px). Cada 2 s, si Lía está a menos de 12
+    casillas y la ve (RayCast2D sin paredes en medio), dispara una "esquirla de
+    bruma" (proyectil morado oscuro de 20 px, 420 px/s) hacia Lía. Avisa
+    0,4 s antes (se infla). La luz de la linterna la asusta: no dispara
+    mientras está iluminada.
+
+5.3 MURCIÉLAGO DE BRUMA  · vida 1 · 48x32 · NUEVO
+    Pequeño y rápido. Aparece en grupos (enjambres de 3 a 6). Vuela en
+    trayectoria ondulada hacia Lía (260 px/s) y al tocarla rebota hacia atrás.
+    Huye un momento si lo ilumina la linterna. Ideal para niveles que bajan.
+
+5.4 GÓLEM DE BRUMA  · vida 10 · 144x192 · NUEVO (mini-jefe)
+    Lento (80 px/s), camina en el suelo. Tiene CORAZA: solo recibe daño
+    mientras está iluminado por la linterna o el campo (la coraza se ve
+    disuelta). Ataque: golpe al suelo cuando Lía está a menos de 3 casillas
+    (aviso de 0,6 s, onda de 4 casillas a cada lado; se esquiva saltando).
+
+5.5 JEFE FINAL: EL DEVORADOR DE LUZ  (ver sección 7)
+
+--------------------------------------------------------------------------------
+6. OBJETOS NUEVOS
+--------------------------------------------------------------------------------
+6.1 CRISTAL (plataforma de cristal)  · pieza 48x24, capa 4, one_way
+    Como la plataforma de luz, pero SOLO aparece con el CAMPO DE LUZ (la
+    linterna normal no alcanza). Permanece mientras dura el campo + 1 s y se
+    desvanece. Marcador: celeste translúcido; oculto = contorno muy tenue.
+
+6.2 PLATAFORMA QUE CAE  · 144x24 (3 casillas), capa 1
+    Para los niveles que bajan. Al pisarla tiembla 0,5 s y cae; reaparece en
+    su lugar a los 3 s. Marcador: tabla de raíz café.
+
+6.3 CORRIENTE DE AIRE / RAÍZ COLGANTE (opcional)
+    Zona vertical que frena la caída (caida_maxima baja a 250 px/s) para
+    descensos largos controlados. Marcador: líneas verticales tenues.
+
+6.4 PUERTA DE ARENA  · capa 1
+    Se cierra detrás de Lía al entrar a una arena de oleadas y se abre al
+    vencer la última oleada.
+
+6.5 LUCIÉRNAGA REINA  · 96x96
+    Al final del nivel 4. Al tocarla: historia "La Luciérnaga Reina" y se
+    desbloquea el campo de luz.
+
+6.6 ALMA DE ANDRÉS  · orbe dorado de 48 px
+    Aparece al vencer al jefe. Al tocarla: historia final.
+
+--------------------------------------------------------------------------------
+7. JEFE FINAL: EL DEVORADOR DE LUZ
+--------------------------------------------------------------------------------
+  - Arena de 40 x 22 casillas, suelo plano con 4 salientes y 4 cristales
+    (solo visibles con el campo) para esquivar en altura. Un farol a la
+    entrada (punto de control antes del jefe).
+  - Cuerpo: masa de bruma de 480x480 flotando al fondo/centro con un OJO
+    (núcleo) de 96x96. Vida: 60. Barra de vida grande arriba en el HUD con el
+    nombre "El Devorador de Luz".
+  - El jefe solo recibe daño en el OJO, y el ojo solo está abierto después de
+    cada ataque (2,5 s, marcado con un brillo rojo). Daño x2 si está
+    iluminado por la linterna mientras se dispara.
+  - Ataques (elige uno al azar, sin repetir dos veces seguidas):
+      1) LLUVIA DE ESQUIRLAS: abanico de 5 proyectiles hacia Lía, 2 veces.
+      2) EMBESTIDA: se carga 1 s en un lado y cruza la arena a ras de suelo
+         (esquivar subiendo a un saliente).
+      3) NOCHE TOTAL: apaga todas las luces 5 s (CanvasModulate casi negro y
+         la linterna solo alcanza 40 %). El jugador debe usar el CAMPO DE LUZ
+         para ver los cristales y la posición del ojo.
+  - Fases:
+      * 100 %–66 %: ataques normales.
+      * 66 %: invoca 4 murciélagos + 1 sombra cazadora.
+      * 33 %: invoca 1 lanzadora + 4 murciélagos; ataca 30 % más rápido.
+  - Al morir: se deshace en chispas (3 s), la arena se ilumina y aparece el
+    alma de Andrés.
+  - Si Lía muere: vuelve al farol de la entrada y el jefe recupera toda su
+    vida (como en cualquier juego de plataformas).
+
+--------------------------------------------------------------------------------
+8. MEDIDAS DE ARTE FUTURO (marcadores con estas medidas)
+--------------------------------------------------------------------------------
+  chispa 16x16 (chispa_volar 4, 15) · esquirla 20x20
+  lanzadora 72x96 (lanzadora_flotar 4,8 · lanzadora_disparar 4,12 · lanzadora_morir 6,12)
+  murcielago 48x32 (murcielago_volar 4,14 · murcielago_morir 4,12)
+  golem 144x192 (golem_caminar 6,8 · golem_golpe 6,10 · golem_morir 8,10)
+  sombra_morir 6,12 (para la sombra existente)
+  devorador 480x480 (devorador_flotar 6,6 · devorador_ataque 6,10 · devorador_morir 10,10)
+  devorador_ojo 96x96 (ojo_cerrado 1 · ojo_abierto 4,8)
+  cristal 48x24 · plataforma_cae 144x24 · luciernaga_reina 96x96 (6,8)
+  alma_andres 48x48 (6,8) · ui_icono_campo 64x64 · ui_barra_jefe 1200x40
+  lia_disparar 72x96 (3, 15) · lia_campo 72x96 (5, 12)
+  Fondos nuevos 1920x1080: raices (3 capas), grieta (2), cristal (3), corazon (3)
+  Tilesets nuevos 192x192: tileset_raices · tileset_grieta · tileset_cristal · tileset_corazon
+
+--------------------------------------------------------------------------------
+9. LOS 4 NIVELES NUEVOS
+--------------------------------------------------------------------------------
+Reglas físicas para diseñar (con los valores actuales de Lía):
+  - Salto: hasta 3,5 casillas de alto; hueco horizontal seguro: 4 casillas
+    (máximo absoluto 5). Flor: 8,5 casillas de alto.
+  - Caída: cualquier altura es segura (no hay daño por caída). Usa espinas y
+    agua al fondo de los huecos para dar peligro.
+  - Un farol cada 40-60 casillas de recorrido (o cada 25-35 en vertical).
+  - Cada zona debe enseñar o combinar algo; no repitas la misma situación.
+  - Usa el mismo constructor de niveles; agrega comandos nuevos:
+      lanzadora(x, y) · murcielagos(x, y, cantidad) · golem(x, y, x0, x1)
+      cristal(x0, x1, y) · plataforma_cae(x, y) · corriente(x0, x1, y0, y1)
+      puerta_arena(x, y0, y1, id) · arena(x0, x1, id, oleadas)
+      reina(x, y) · jefe(x, y) · nota_raiz(x, y, texto)   (textos del árbol)
+  - El constructor debe soportar niveles ALTOS (verticales): límites de
+    cámara en Y, y cuando Lía cae la cámara mira 150 px hacia abajo.
+  - Escribe cada nivel como archivo de datos en scripts/datos/ y PRUÉBALO
+    tú mismo leyendo las distancias; luego pide al usuario recorrerlo y mide
+    el tiempo. Si un tramo es imposible o trivial, ajústalo.
+
+NIVEL 3 · LAS RAÍCES PROFUNDAS  (horizontal, ~200 x 24 casillas)
+  Objetivo: "Usa el disparo de luz y baja por las raíces hasta la grieta."
+  3.1 Raíces del Árbol Madre: carteles que enseñan el disparo; 2 sombras
+      patrulla fáciles de destruir; un brasero que solo se alcanza
+      disparándole desde lejos (la chispa ilumina).
+  3.2 Galería de raíces: primeras lanzadoras; coberturas (bloques) para
+      esquivar las esquirlas; frascos detrás de cada encuentro.
+  3.3 El pozo de luciérnagas: primer descenso corto (8-10 casillas) con
+      salientes; plataformas de luz bajando en zigzag.
+  3.4 La puerta de la Bruma: arena pequeña con 1 oleada (3 sombras + 1
+      lanzadora); al vencer se abre el paso a la grieta.
+
+NIVEL 4 · EL DESCENSO  (VERTICAL, ~48 x 140 casillas, se avanza hacia ABAJO)
+  Objetivo: "Desciende por la grieta hasta el fondo."
+  4.1 La grieta: salientes alternados a izquierda y derecha, espinas en las
+      paredes, murciélagos en enjambres pequeños.
+  4.2 Cascada subterránea: plataformas que caen y corrientes de aire que
+      frenan la caída; lanzadoras en las paredes.
+  4.3 Raíces colgantes: plataformas de luz hacia abajo en zigzag y un
+      brasero lejano que hay que encender disparando para abrir el paso.
+  4.4 El fondo: arena con el GÓLEM DE BRUMA (mini-jefe). Al vencerlo
+      aparece la LUCIÉRNAGA REINA -> historia -> se gana el campo de luz.
+
+NIVEL 5 · LAS CAVERNAS DE CRISTAL  (mixto: sube y baja, ~220 x 40 casillas)
+  Objetivo: "Cruza las cavernas usando el campo de luz."
+  Oscuridad máxima (#0a0a12): la linterna sola apenas alcanza.
+  5.1 Primeros cristales: carteles que enseñan el campo; huecos que solo se
+      cruzan con cristales.
+  5.2 Río negro: agua abajo, cristales y plataformas de luz combinados;
+      hay que decidir cuándo gastar el campo.
+  5.3 Nido de murciélagos: enjambres grandes (5-6); el pulso del campo los
+      destruye en grupo.
+  5.4 El umbral: subida larga con cristales + gólem. Al final, historia
+      "Antes del corazón".
+
+NIVEL 6 · EL CORAZÓN DE LA BRUMA  (~180 x 40 casillas, termina en arena)
+  Objetivo: "Recupera el alma de papá."
+  6.1 Camino de raíces muertas: descenso con todos los enemigos mezclados.
+  6.2 Las fauces: pasillo con paredes que se cierran y abren por turnos
+      (peligro con ritmo); hay que avanzar en el momento justo.
+  6.3 Arena de oleadas: puertas de arena; 3 oleadas:
+        1) 4 murciélagos + 2 sombras
+        2) 2 lanzadoras + 2 sombras cazadoras
+        3) 1 gólem + 4 murciélagos
+      Entre oleadas aparecen 2 frascos. Farol antes de entrar.
+  6.4 El Devorador de Luz (jefe, sección 7).
+
+--------------------------------------------------------------------------------
+10. CAMBIOS EN SISTEMAS EXISTENTES
+--------------------------------------------------------------------------------
+  - Juego.gd: niveles 0 a 5 (6 niveles en total), flags tiene_disparo y
+    tiene_campo (se guardan en el progreso), estadística sombras_destruidas.
+  - Guardado: guarda el nivel más alto alcanzado. En el título, "Continuar"
+    abre una lista para elegir cualquier nivel ya desbloqueado (con sus
+    habilidades correspondientes).
+  - HUD: ícono del campo de luz con recarga; barra del jefe; nombre de zona.
+  - Tarjeta de nivel: "Nivel 3 · Las raíces profundas", etc.
+  - Pausa: mostrar también los controles nuevos.
+  - Audio (funciones vacías nuevas): sfx_disparo, sfx_impacto,
+    sfx_enemigo_muere, sfx_campo, sfx_esquirla, sfx_golem_golpe,
+    sfx_jefe_ataque, sfx_jefe_muere, musica("jefe").
+
+--------------------------------------------------------------------------------
+11. PLAN DE FASES
+--------------------------------------------------------------------------------
+FASE 7 - Nuevo final del nivel 2 + flujo del juego
+   Historia "El árbol habla" y pantalla de habilidad; título, historias,
+   tarjetas, pausa, pantalla final; guardado con selección de nivel;
+   Juego preparado para 6 niveles (los 3 a 6 pueden ser un nivel vacío
+   provisional con un cartel "En construcción" y una salida).
+
+FASE 8 - Disparo de luz y enemigos con vida
+   (Antes: confirmar controles con el usuario, sección 1.)
+   Chispa, vida y muerte de enemigos, luciérnaga pequeña al morir, embestida
+   de la sombra cazadora, lanzadora de bruma y sus esquirlas. Probarlo en
+   nivel_prueba.
+
+FASE 9 - Nivel 3 completo (4 zonas) + arenas de oleadas básicas.
+
+FASE 10 - Niveles verticales: cámara en Y, plataforma que cae, corriente,
+   murciélagos, gólem, Luciérnaga Reina. Nivel 4 completo.
+
+FASE 11 - Campo de luz + cristales + HUD del campo. Nivel 5 completo.
+
+FASE 12 - Jefe final + Nivel 6 completo + historia final nueva + alma.
+
+FASE 13 - Pulido, balance y DURACIÓN: medir el tiempo de una partida
+   completa (objetivo 20 min o más; mínimo indispensable 10). Exportar
+   (Windows con PCK incrustado + Web) en pantalla completa.
+
+FASE 14 - Arte (cuando el usuario entregue los PNG).
+
+--------------------------------------------------------------------------------
+12. PARA EL DOCUMENTO DE ENTREGA (sección "Cambios respecto a la Tarea 1")
+--------------------------------------------------------------------------------
+Al terminar, ayuda al usuario a redactar estos cambios:
+  - Se mantuvo la historia y la mecánica de luz limitada de la Tarea 1.
+  - Se agregó un segundo acto (el alma de Andrés) para profundizar la
+    historia y alcanzar la duración requerida.
+  - La luz pasó de solo iluminar a también combatir (disparo y campo),
+    pero sigue siendo un recurso limitado: disparar gasta la misma luz que
+    se necesita para ver, así que la decisión central del juego se mantiene.
+  - Se agregaron niveles verticales, enemigos que atacan y un jefe final.
+
+================================================================================
+FIN DE LA PARTE 2
+================================================================================
