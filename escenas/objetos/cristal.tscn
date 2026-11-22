@@ -1,0 +1,36 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/objetos/cristal.gd" id="1_cristal"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_cristal"]
+size = Vector2(48, 24)
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_brillo"]
+light_mode = 1
+
+[node name="Cristal" type="StaticBody2D"]
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("1_cristal")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -36)
+shape = SubResource("RectangleShape2D_cristal")
+one_way_collision = true
+
+[node name="Visual" type="Node2D" parent="."]
+
+[node name="Pieza" type="ColorRect" parent="Visual"]
+material = SubResource("CanvasItemMaterial_brillo")
+offset_left = -24.0
+offset_top = -48.0
+offset_right = 24.0
+offset_bottom = -24.0
+mouse_filter = 2
+color = Color(0.55, 0.85, 1, 0.55)
+
+[node name="Borde" type="Line2D" parent="Visual"]
+material = SubResource("CanvasItemMaterial_brillo")
+points = PackedVector2Array(-23, -47, 23, -47, 23, -25, -23, -25, -23, -47)
+width = 2.0
+default_color = Color(0.8, 0.95, 1, 1)

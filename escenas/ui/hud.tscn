@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/hud.gd" id="1_hud"]
+[ext_resource type="Script" path="res://scripts/icono_campo.gd" id="2_icono"]
 
 [node name="HUD" type="CanvasLayer"]
 layer = 10
@@ -15,6 +16,16 @@ mouse_filter = 2
 max_value = 100.0
 value = 100.0
 show_percentage = false
+
+[node name="IconoCampo" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 418.0
+offset_top = 22.0
+offset_right = 482.0
+offset_bottom = 86.0
+mouse_filter = 2
+script = ExtResource("2_icono")
 
 [node name="EtiquetaLuz" type="Label" parent="."]
 offset_left = 40.0

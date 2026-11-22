@@ -126,16 +126,25 @@ func registrar_sombra_destruida() -> void:
 	estadisticas["sombras_destruidas"] += 1
 
 
+## Solo el campo de luz (los cristales no responden a la linterna normal).
+func campo_ilumina(punto: Vector2) -> bool:
+	return is_instance_valid(jugador) and jugador.campo_ilumina(punto)
+
+
+func campo_activo() -> bool:
+	return is_instance_valid(jugador) and jugador.campo_activo()
+
+
 ## Acto 2 (desde el nivel 3): los enemigos atacan y se pueden destruir.
 func es_acto_2() -> bool:
 	return nivel_actual >= NIVEL_CON_DISPARO
 
 
-## ¿Hay luz en este punto? Cuenta la linterna de Lía y cualquier luz extra
-## (chispas en vuelo; en la Fase 11 también el campo de luz).
+## ¿Hay luz en este punto? Cuenta la linterna de Lía, el campo de luz
+## y cualquier luz extra (chispas en vuelo).
 ## Las luces extra están en el grupo "luces_extra" y tienen ilumina(punto) -> bool.
 func esta_iluminado(punto: Vector2) -> bool:
-	if is_instance_valid(jugador) and jugador.esta_iluminado(punto):
+	if is_instance_valid(jugador) and (jugador.esta_iluminado(punto) or jugador.campo_ilumina(punto)):
 		return true
 	for luz: Node in get_tree().get_nodes_in_group("luces_extra"):
 		if luz.call("ilumina", punto):

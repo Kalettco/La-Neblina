@@ -37,6 +37,7 @@ const ESCENA_PELIGRO: PackedScene = preload("res://escenas/objetos/peligro.tscn"
 const ESCENA_SALIDA: PackedScene = preload("res://escenas/objetos/salida.tscn")
 const ESCENA_SOMBRA: PackedScene = preload("res://escenas/enemigos/sombra.tscn")
 const ESCENA_LANZADORA: PackedScene = preload("res://escenas/enemigos/lanzadora.tscn")
+const ESCENA_CRISTAL: PackedScene = preload("res://escenas/objetos/cristal.tscn")
 const ESCENA_GUARDIANA: PackedScene = preload("res://escenas/objetos/guardiana.tscn")
 const ESCENA_ARBOL: PackedScene = preload("res://escenas/objetos/arbol_madre.tscn")
 
@@ -56,6 +57,7 @@ const COLORES_OSCURIDAD: Dictionary = {
 }
 const COLOR_ENTREGA: Color = Color("050508")
 const COLOR_CURACION: Color = Color("7d8aa6")   # la oscuridad se aclara al sanar el árbol
+const COLOR_CAMPO: Color = Color("9aa6c8")      # tono claro mientras dura el campo de luz
 const COLOR_FONDO_CUEVA: Color = Color("17130f")
 const VELOCIDAD_COLOR: float = 6.0     # el color de la noche cambia en ~0,5 s
 const MULTIPLICADOR_GRACIA_COPA: float = 3.0   # plataformas de luz en la copa: 0,5 s x 3
@@ -86,6 +88,7 @@ func _ready() -> void:
 		datos = datos_prueba
 		Juego.nivel_actual = Juego.NIVEL_CON_DISPARO
 		Juego.tiene_disparo = true
+		Juego.tiene_campo = true
 	else:
 		datos = DATOS[clampi(Juego.nivel_actual, 0, DATOS.size() - 1)]
 	Juego.iniciar_nivel(self)
@@ -294,6 +297,8 @@ func _actualizar_zona(delta: float) -> void:
 		objetivo = COLOR_CURACION
 	elif Juego.entregando_luz:
 		objetivo = COLOR_ENTREGA
+	elif Juego.campo_activo():
+		objetivo = COLOR_CAMPO
 	noche.color = noche.color.lerp(objetivo, minf(1.0, VELOCIDAD_COLOR * delta))
 
 
@@ -427,3 +432,9 @@ func _siluetas(azar: RandomNumberGenerator, color: Color, piso: float,
 		resultado.append(arbol)
 		x += separacion * azar.randf_range(0.6, 1.4)
 	return resultado
+
+
+## Plataforma de cristal (una pieza por casilla): solo aparece con el CAMPO de luz.
+func cristal(x0: int, x1: int, y: int) -> void:
+	for x in range(x0, x1 + 1):
+		_colocar(ESCENA_CRISTAL.instantiate(), x, y, objetos)

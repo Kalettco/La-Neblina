@@ -32,6 +32,16 @@ extends CharacterBody2D
 
 const ESCENA_CHISPA: PackedScene = preload("res://escenas/objetos/chispa.tscn")
 
+# --- Campo de luz (acto 2, tecla Q o clic izquierdo + derecho a la vez) ---
+@export var duracion_campo: float = 4.0       # segundos que todo alrededor queda iluminado
+@export var recarga_campo: float = 10.0       # segundos hasta poder usarlo otra vez
+@export var costo_campo: float = 15.0
+@export var radio_campo: float = 1100.0       # px
+@export var dano_pulso_campo: int = 2         # daño del pulso inicial a los enemigos
+
+const ESCENA_ONDA: PackedScene = preload("res://escenas/objetos/onda_campo.tscn")
+const VENTANA_COMBO: float = 0.15             # clic izquierdo + derecho "casi a la vez"
+
 const ENERGIA_BAJA: float = 25.0
 const ENERGIA_AL_REAPARECER: float = 70.0
 const TAMANO_TEXTURA_CONO: int = 512
@@ -60,6 +70,12 @@ var _sacudida_duracion: float = 0.0
 var _sacudida_fuerza: float = 0.0
 var _espera_disparo: float = 0.0
 var _tiempo_disparando: float = 0.0     # para la animación lia_disparar
+var tiempo_campo: float = 0.0           # > 0 mientras el campo de luz está activo
+var recarga_campo_restante: float = 0.0 # > 0 mientras el campo se recarga
+var _desde_clic_izq: float = 99.0       # segundos desde el último clic izquierdo / F
+var _desde_disparo: float = 99.0        # segundos desde el último disparo
+var _ultima_chispa: Node2D = null
+var _tiempo_animacion_campo: float = 0.0
 
 # --- Animación (para cuando llegue el arte) ---
 var _estaba_en_suelo: bool = true
@@ -99,6 +115,7 @@ func _physics_process(delta: float) -> void:
 	if is_on_floor():
 		impulsado = false
 	_procesar_linterna(delta)
+	_procesar_campo(delta)
 	_procesar_disparo(delta)
 	_actualizar_visual()
 	_actualizar_aura()
@@ -161,9 +178,14 @@ func _procesar_movimiento(delta: float) -> void:
 func _procesar_disparo(delta: float) -> void:
 	_espera_disparo = maxf(_espera_disparo - delta, 0.0)
 	_tiempo_disparando = maxf(_tiempo_disparando - delta, 0.0)
+	_desde_disparo += delta
 	if not Juego.tiene_disparo or entregando_luz or bloqueado:
 		return
 	if not Input.is_action_just_pressed("disparar") or _espera_disparo > 0.0:
+		return
+	# Clic izquierdo + derecho casi a la vez = campo de luz (no dispara)
+	if _desde_clic_izq <= VENTANA_COMBO and _puede_usar_campo():
+		_activar_campo()
 		return
 	if energia < costo_disparo:
 		Juego.toast("No te queda luz suficiente para disparar.")
@@ -183,7 +205,82 @@ func _procesar_disparo(delta: float) -> void:
 	chispa.set("alcance", alcance_chispa)
 	chispa.set("dano", dano_chispa)
 	get_parent().add_child(chispa)
+	_ultima_chispa = chispa
+	_desde_disparo = 0.0
 	Audio.sfx_disparo()
+
+
+# --- Campo de luz ---
+
+## Q, o clic izquierdo justo después de un disparo (combo): activa el campo.
+func _procesar_campo(delta: float) -> void:
+	tiempo_campo = maxf(tiempo_campo - delta, 0.0)
+	recarga_campo_restante = maxf(recarga_campo_restante - delta, 0.0)
+	_tiempo_animacion_campo = maxf(_tiempo_animacion_campo - delta, 0.0)
+	_desde_clic_izq += delta
+	if Input.is_action_just_pressed("linterna"):
+		# Combo al revés: primero el derecho y luego el izquierdo. Se anula ese disparo.
+		if _desde_disparo <= VENTANA_COMBO and _puede_usar_campo():
+			_anular_ultimo_disparo()
+			_activar_campo()
+			return
+		_desde_clic_izq = 0.0
+	if Input.is_action_just_pressed("campo_luz"):
+		if not Juego.tiene_campo:
+			return
+		if recarga_campo_restante > 0.0:
+			Juego.toast("El campo de luz se está recargando.")
+		elif energia < costo_campo:
+			Juego.toast("No te queda luz suficiente para el campo.")
+		elif _puede_usar_campo():
+			_activar_campo()
+
+
+func _puede_usar_campo() -> bool:
+	return Juego.tiene_campo and recarga_campo_restante <= 0.0 and energia >= costo_campo \
+		and not entregando_luz and not bloqueado and not muerto
+
+
+## Devuelve la luz del disparo que formó parte del combo y quita esa chispa.
+func _anular_ultimo_disparo() -> void:
+	energia = minf(energia + costo_disparo, energia_maxima)
+	if is_instance_valid(_ultima_chispa):
+		_ultima_chispa.queue_free()
+	_ultima_chispa = null
+	_desde_disparo = 99.0
+
+
+## Onda expansiva: ilumina todo en radio_campo durante duracion_campo,
+## asusta a las sombras, daña a los enemigos y destruye proyectiles enemigos.
+func _activar_campo() -> void:
+	energia -= costo_campo
+	tiempo_campo = duracion_campo
+	recarga_campo_restante = recarga_campo
+	_tiempo_animacion_campo = 0.4
+	_desde_clic_izq = 99.0
+	var centro: Vector2 = global_position + Vector2(0.0, -42.0)
+	var onda: Node2D = ESCENA_ONDA.instantiate()
+	onda.position = centro
+	onda.set("radio_final", radio_campo)
+	get_parent().add_child(onda)
+	for enemigo: Node in get_tree().get_nodes_in_group("enemigos"):
+		var e: Node2D = enemigo as Node2D
+		if e.call("centro").distance_to(centro) <= radio_campo:
+			e.call("recibir_dano", dano_pulso_campo, centro)
+	for proyectil: Node in get_tree().get_nodes_in_group("proyectiles_enemigos"):
+		if (proyectil as Node2D).global_position.distance_to(centro) <= radio_campo:
+			proyectil.call("destruir")
+	sacudir(6.0, 0.3)
+	Audio.sfx_campo()
+
+
+func campo_activo() -> bool:
+	return tiempo_campo > 0.0
+
+
+## ¿Este punto está dentro del campo de luz activo?
+func campo_ilumina(punto: Vector2) -> bool:
+	return campo_activo() and punto.distance_to(global_position + Vector2(0.0, -42.0)) <= radio_campo
 
 
 func _procesar_linterna(delta: float) -> void:
@@ -230,6 +327,7 @@ func desmayar() -> void:
 	linterna_encendida = false
 	cono.enabled = false
 	visual.modulate.a = 1.0
+	tiempo_campo = 0.0
 
 
 ## La llama Juego: vuelve al último farol (o al inicio).
@@ -244,6 +342,8 @@ func reaparecer(posicion: Vector2) -> void:
 	recibiendo_dano = false
 	_sin_control = 0.0
 	invulnerable = TIEMPO_INVULNERABLE
+	tiempo_campo = 0.0
+	recarga_campo_restante = 0.0
 	camara.reset_smoothing()
 
 
@@ -334,6 +434,8 @@ func _actualizar_aura() -> void:
 		if linterna_marcador != null:
 			linterna_marcador.modulate = Color.WHITE
 		cono.energy = 1.2
+	if campo_activo():
+		brillo = 1.6   # Lía brilla con fuerza mientras dura el campo de luz
 	aura.energy = brillo
 
 
@@ -400,6 +502,8 @@ func _elegir_animacion(en_suelo: bool) -> String:
 		return "lia_entregar"
 	if recibiendo_dano:
 		return "lia_dano"
+	if _tiempo_animacion_campo > 0.0:
+		return "lia_campo"
 	if _tiempo_disparando > 0.0:
 		return "lia_disparar"
 	if not en_suelo:
