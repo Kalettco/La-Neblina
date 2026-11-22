@@ -1,0 +1,59 @@
+[gd_scene format=3 uid="uid://b3vwf14y6q2a1"]
+
+[ext_resource type="Script" uid="uid://3x1mp656roam" path="res://scripts/jugador.gd" id="1_vquro"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_fabxv"]
+size = Vector2(36, 84)
+
+[node name="Jugador" type="CharacterBody2D" unique_id=3176774]
+collision_layer = 2
+collision_mask = 9
+script = ExtResource("1_vquro")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1477300134]
+position = Vector2(0, -42)
+shape = SubResource("RectangleShape2D_fabxv")
+
+[node name="Visual" type="Node2D" parent="." unique_id=1142746460]
+
+[node name="Cuerpo" type="ColorRect" parent="Visual" unique_id=700984668]
+offset_left = -18.0
+offset_top = -84.0
+offset_right = 18.0
+mouse_filter = 2
+color = Color(0.8901961, 0, 0, 1)
+
+[node name="Linterna" type="ColorRect" parent="Visual" unique_id=707732820]
+offset_left = 18.0
+offset_top = -56.0
+offset_right = 30.0
+offset_bottom = -40.0
+mouse_filter = 2
+color = Color(1, 1, 0.19607843, 1)
+
+[node name="PuntoLinterna" type="Marker2D" parent="." unique_id=320624374]
+position = Vector2(24, -48)
+
+[node name="Cono" type="PointLight2D" parent="PuntoLinterna"]
+enabled = false
+energy = 1.2
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=479536803]
+position_smoothing_enabled = true
+
+[node name="Aura" type="PointLight2D" parent="."]
+position = Vector2(0, -42)
+energy = 0.9
+texture_scale = 1.2
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="BarraLuz" type="ProgressBar" parent="HUD"]
+offset_left = 40.0
+offset_top = 40.0
+offset_right = 400.0
+offset_bottom = 68.0
+mouse_filter = 2
+max_value = 100.0
+value = 100.0
+show_percentage = false

@@ -1,0 +1,72 @@
+[gd_scene format=3 uid="uid://b2hdaixojujhh"]
+
+[ext_resource type="PackedScene" uid="uid://b3vwf14y6q2a1" path="res://escenas/jugador/jugador.tscn" id="1_l0ku4"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_fabxv"]
+size = Vector2(3840, 96)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ooo5k"]
+size = Vector2(300, 48)
+
+[node name="NivelPrueba" type="Node2D" unique_id=13368945]
+
+[node name="Noche" type="CanvasModulate" parent="."]
+color = Color(0.101960786, 0.13333334, 0.21960784, 1)
+
+[node name="Suelo" type="StaticBody2D" parent="." unique_id=1576541796]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Suelo" unique_id=1444552086]
+position = Vector2(1920, 1000)
+shape = SubResource("RectangleShape2D_fabxv")
+
+[node name="ColorRect" type="ColorRect" parent="Suelo" unique_id=1858991212]
+offset_top = 952.0
+offset_right = 3840.0
+offset_bottom = 1048.0
+mouse_filter = 2
+color = Color(0.27058825, 0.49803922, 0.23921569, 1)
+
+[node name="Plataforma" type="StaticBody2D" parent="." unique_id=1767103597]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Plataforma" unique_id=1323005002]
+position = Vector2(900, 800)
+shape = SubResource("RectangleShape2D_ooo5k")
+
+[node name="ColorRect" type="ColorRect" parent="Plataforma" unique_id=1989764632]
+offset_left = 756.0
+offset_top = 776.0
+offset_right = 1044.0
+offset_bottom = 824.0
+mouse_filter = 2
+color = Color(0.5607075, 0.22997564, 1.4439226e-07, 1)
+
+[node name="Plataforma2" type="StaticBody2D" parent="." unique_id=246111702]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Plataforma2" unique_id=1337591251]
+position = Vector2(1314, 803)
+shape = SubResource("RectangleShape2D_ooo5k")
+
+[node name="ColorRect" type="ColorRect" parent="Plataforma2" unique_id=928014353]
+offset_left = 1164.0
+offset_top = 779.0
+offset_right = 1452.0
+offset_bottom = 827.0
+mouse_filter = 2
+color = Color(0.5607075, 0.22997564, 1.4439226e-07, 1)
+
+[node name="Plataforma3" type="StaticBody2D" parent="." unique_id=1230518069]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Plataforma3" unique_id=570383159]
+position = Vector2(1697, 706)
+shape = SubResource("RectangleShape2D_ooo5k")
+
+[node name="ColorRect" type="ColorRect" parent="Plataforma3" unique_id=1299033193]
+offset_left = 1547.0
+offset_top = 679.0
+offset_right = 1835.0
+offset_bottom = 727.0
+mouse_filter = 2
+color = Color(0.5607075, 0.22997564, 1.4439226e-07, 1)
+
+[node name="Jugador" parent="." unique_id=3176774 instance=ExtResource("1_l0ku4")]
+position = Vector2(200, 900)

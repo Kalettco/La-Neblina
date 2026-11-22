@@ -1,0 +1,787 @@
+================================================================================
+  NEBLINA - INSTRUCCIONES PARA CLAUDE CODE
+  Prototipo de videojuego 2D en Godot 4.7.2 (GDScript)
+  Proyecto del curso "Introducción a Motores Gráficos para Video"
+================================================================================
+
+Este archivo es la especificación completa del prototipo. Léelo entero antes de
+tocar el proyecto. El arte todavía NO existe: todo se construye con figuras de
+colores (ColorRect / Polygon2D / texturas generadas por código) con las MEDIDAS
+EXACTAS que tendrá el arte final, para que después solo se cambien las imágenes.
+
+--------------------------------------------------------------------------------
+0. CÓMO DEBES TRABAJAR (REGLAS PARA CLAUDE CODE)
+--------------------------------------------------------------------------------
+
+- El usuario es principiante. Usa Godot en ESPAÑOL. Explica en español, corto y
+  claro, qué hiciste y qué debe probar.
+- Trabaja POR FASES (sección 12). Al terminar cada fase:
+    1) resume en 3-5 líneas qué cambió,
+    2) dile al usuario qué probar con F5 (lista de comprobación),
+    3) espera su confirmación antes de pasar a la siguiente fase,
+    4) cuando confirme, haz commit:  git add .  /  git commit -m "Fase N: ..."  /  git push
+- ANTES de empezar, revisa el estado real del proyecto (archivos .tscn, .gd y
+  project.godot). Algunas fases pueden estar a medias. No supongas: lee.
+- NO renombres ni borres los nodos existentes del jugador (sección 4).
+- Lenguaje: SOLO GDScript (nada de C#). Godot 4.7.2 estable.
+- Nombres de variables, funciones, nodos y archivos: en español, sin tildes ni
+  ñ, en snake_case (archivos y variables) y PascalCase (nodos).
+- Comentarios en español.
+- Usa tipado estático en GDScript (var x: float = 0.0, func f() -> void).
+- Indentación con TABULADORES.
+- Cuando crees archivos .tscn a mano, puedes omitir las líneas uid="..."; Godot
+  las regenera. Prefiere construir los objetos de los niveles POR CÓDIGO
+  (constructor de niveles, sección 8) en vez de escribir .tscn gigantes.
+- Si Godot está en el PATH, puedes verificar errores de sintaxis con:
+      godot --headless --path . --quit
+  Si no lo está, pide al usuario que presione F5 y te mande el error.
+- Nunca subas la pantalla a modo "Fullscreen" en project.godot durante el
+  desarrollo; el juego ya tiene F11 para alternar.
+
+--------------------------------------------------------------------------------
+1. EL JUEGO
+--------------------------------------------------------------------------------
+
+Nombre: Neblina
+Género: plataformas 2D de vista lateral, con acertijos de luz.
+Estructura narrativa: Story Circle de Dan Harmon.
+
+Historia breve:
+  Lía Mora, 12 años, vive en San Isidro de las Nubes, un pueblito ficticio al pie
+  de un bosque nuboso (inspirado en Costa Rica). Le teme a la oscuridad y duerme
+  con la luz encendida. Una noche baja del cerro una neblina negra, "la Bruma";
+  las luciérnagas desaparecen y su papá Andrés (guardaparques) entra al bosque y
+  no regresa. Lía toma la vieja linterna de su abuela, que solo brilla con
+  luciérnagas dentro, y entra sola al bosque. Libera luciérnagas, cruza el
+  bosque y descubre que la Bruma sale del Árbol Madre, que se está secando. Al
+  final debe ENTREGAR TODA SU LUZ al árbol y quedarse a oscuras: lo hace, el
+  árbol sana, la Bruma se va y su papá queda libre. Esa noche Lía apaga la luz
+  para dormir.
+
+MECÁNICA PRINCIPAL: "luz limitada".
+  Lía lleva una linterna que apunta hacia el mouse mientras se mantiene el clic
+  izquierdo (o F). La luz:
+    - revela plataformas que solo existen iluminadas,
+    - espanta a las sombras de la Bruma,
+    - abre flores-trampolín,
+    - enciende braseros que abren puertas de raíces.
+  Pero la luz SE GASTA (barra de LUZ). Se recarga liberando luciérnagas de
+  frascos. Si llega a 0, la Bruma atrapa a Lía y vuelve al último farol.
+
+Requisitos de la tarea que el prototipo DEBE cumplir:
+  - Control del personaje.
+  - Mecánica principal completa y consistente (vale 30 pts).
+  - Nivel 1 TUTORIAL que enseñe: qué puede hacer el jugador, cuál es el
+    objetivo y cómo se supera el reto (20 pts).
+  - Nivel 2 COMPLETO con objetivo claro, condición de victoria y relación con
+    la historia (25 pts).
+  - Condición de victoria / transición clara.
+  - Relación con la historia (5 pts).
+  - DURACIÓN DE JUEGO: 10 MINUTOS O MÁS (10 pts). Mide y ajusta.
+
+--------------------------------------------------------------------------------
+2. CONFIGURACIÓN DEL PROYECTO (YA HECHA - SOLO VERIFICA)
+--------------------------------------------------------------------------------
+
+Ruta del proyecto:  E:\la-neblina      Repositorio: github.com/Kalettco/La-Neblina
+Renderizador: Compatibility.
+
+Pantalla (project.godot):
+  display/window/size/viewport_width  = 1920
+  display/window/size/viewport_height = 1080
+  display/window/size/window_width_override  = 1280
+  display/window/size/window_height_override = 720
+  display/window/stretch/mode   = "canvas_items"
+  display/window/stretch/aspect = "expand"
+  display/window/stretch/scale_mode = "fractional"
+  Filtro de texturas por defecto: Linear.
+  display/window/size/mode: Windowed durante el desarrollo
+    (el usuario pudo dejarlo en Fullscreen; si es así, cámbialo a Windowed y
+     avísale. Se pone Fullscreen solo al exportar).
+  Color de limpieza por defecto: #0b0f1a
+
+ESCALA DEL MUNDO: casillas de 48 x 48 px. Todas las coordenadas de nivel de
+este documento están en CASILLAS (x = columna, y = fila, fila 0 arriba).
+Posición en píxeles = casilla * 48.
+
+Capas de física 2D (nombres ya configurados):
+  1 mundo           suelo, paredes, rocas, puertas cerradas
+  2 jugador         Lía
+  3 sombras         enemigos
+  4 plataformas_luz plataformas que solo existen iluminadas
+  5 recolectables   frascos, guardianas
+  6 interactuables  faroles, braseros, flores, carteles, salida, árbol
+  7 peligros        agua, espinas
+
+Mapa de entrada (acciones ya creadas, no las cambies):
+  mover_izquierda  A, flecha izquierda
+  mover_derecha    D, flecha derecha
+  saltar           W, Espacio, flecha arriba
+  linterna         clic izquierdo del mouse, F
+  entregar_luz     E
+  pausa            Escape
+  (F11 se lee directamente en código para pantalla completa)
+
+Estructura de carpetas:
+  res://
+    assets/   audio/ fondos/ fuentes/ sprites/ tilesets/
+    docs/
+    escenas/  enemigos/ jugador/ niveles/ objetos/ ui/
+    scripts/
+
+--------------------------------------------------------------------------------
+3. ESTADO ACTUAL
+--------------------------------------------------------------------------------
+
+HECHO (Fase 1):
+  - escenas/jugador/jugador.tscn  con el script scripts/jugador.gd
+  - Lía camina (350 px/s), salta (coyote time, buffer, salto variable).
+  - escenas/niveles/nivel_prueba.tscn: suelo (StaticBody2D 3840x96 en y=1000),
+    una plataforma, y el jugador en (200, 900). Es la escena principal.
+
+PUEDE ESTAR A MEDIAS (Fase 2 - verifica):
+  - CanvasModulate #1a2238 en nivel_prueba.
+  - Nodos de luz en el jugador (Cono, Aura) y HUD/BarraLuz.
+  - jugador.gd con linterna, barra y textura de cono generada por código.
+  Si no están, impleméntalos según la sección 5.
+
+--------------------------------------------------------------------------------
+4. JUGADOR (LÍA) - ESTRUCTURA QUE NO SE DEBE ROMPER
+--------------------------------------------------------------------------------
+
+Árbol de jugador.tscn (origen del nodo = PIES de Lía):
+
+  Jugador (CharacterBody2D)         script: res://scripts/jugador.gd
+  │                                 collision_layer = 2 (jugador)
+  │                                 collision_mask  = 1 (mundo) + 4 (plataformas_luz)
+  ├── CollisionShape2D              RectangleShape2D 36 x 84, position (0, -42)
+  ├── Visual (Node2D)               se voltea con scale.x = mirando
+  │   ├── Cuerpo (ColorRect)        36 x 84, position (-18, -84), rojo, mouse_filter Ignore
+  │   └── Linterna (ColorRect)      12 x 16, position (18, -56), amarillo, mouse_filter Ignore
+  ├── PuntoLinterna (Marker2D)      position (24, -48)  (x se invierte con mirando)
+  │   └── Cono (PointLight2D)       Fase 2
+  ├── Camera2D                      position_smoothing_enabled = true
+  ├── Aura (PointLight2D)           Fase 2, position (0, -42)
+  └── HUD (CanvasLayer)             Fase 2 (en la Fase 3 se mueve a escena propia)
+      └── BarraLuz (ProgressBar)    360 x 28 en (40, 40), sin porcentaje
+
+Valores de movimiento (ya funcionan, no cambiar sin motivo):
+  velocidad 350 · aceleracion 3000 · friccion 3200
+  fuerza_salto 950 (≈ 3,6 casillas de alto) · gravedad 2600 · caida_maxima 1400
+  tiempo_coyote 0.10 · tiempo_buffer_salto 0.12 · salto variable: x0.5 al soltar
+
+Cuando llegue el arte, Visual/Cuerpo y Visual/Linterna se reemplazarán por un
+AnimatedSprite2D llamado "Sprite" dentro de Visual. PREPARA ese reemplazo:
+deja en jugador.gd una función _actualizar_animacion() que elija el nombre de
+animación según el estado (ver sección 11) aunque todavía no haya sprite
+(si $Visual/Sprite no existe, no hace nada).
+
+--------------------------------------------------------------------------------
+5. LA LINTERNA (MECÁNICA PRINCIPAL)
+--------------------------------------------------------------------------------
+
+Valores:
+  energia_maxima     100
+  gasto_por_segundo  13        (≈ 7,7 s de luz continua)
+  alcance_luz        420 px
+  apertura_luz       0.36 rad a cada lado del centro del cono (~20°)
+  color_luz          Color(1.0, 0.86, 0.55)
+  radio_pies         60 px     (IMPORTANTE, ver abajo)
+
+Comportamiento:
+  - Encendida solo mientras se mantiene la acción "linterna" Y energia > 0.
+  - El cono (PointLight2D "Cono") rota hacia get_global_mouse_position().
+  - Mientras está encendida, Lía mira hacia el lado del mouse.
+  - La energía baja gasto_por_segundo * delta. Si llega a 0 -> Lía "muere"
+    (mensaje "La Bruma te alcanzó.") y vuelve al último farol (sección 7.10).
+  - Aura (PointLight2D) alrededor de Lía siempre activa, energy de 0.35 a 0.9
+    según la energía restante (más débil con poca luz). Con energía < 25 el aura
+    parpadea suavemente.
+  - La barra de LUZ se pone roja (modulate 1, 0.45, 0.35) con energía < 25.
+  - Texturas del cono y del aura GENERADAS POR CÓDIGO (no hay arte):
+      cono: Image 512x512, solo la mitad derecha, alfa = suavizado en el borde
+            del ángulo * (1 - distancia/radio); texture_scale = 420/256.
+      aura: GradientTexture2D radial, blanco -> transparente, 256x256.
+
+CONSULTA DE ILUMINACIÓN (la usan todos los objetos):
+  En jugador.gd crea:
+      func esta_iluminado(punto_global: Vector2) -> bool
+  Devuelve true si la linterna está encendida y:
+      a) distancia(punto, origen_cono) <= alcance_luz  Y
+         |ángulo(punto - origen) - ángulo_cono| < apertura_luz      (dentro del cono)
+      o b) distancia(punto, origen_cono) <= radio_pies              (alrededor)
+  La regla (b) es OBLIGATORIA: en las pruebas del diseño, si la linterna no
+  ilumina "a los pies", al apuntar a la siguiente plataforma de luz la
+  plataforma en la que Lía está parada desaparece y se cae. Con un radio de
+  60 px alrededor de la linterna, la plataforma bajo los pies sigue existiendo.
+  Para objetos con tamaño (plataformas), prueba 3 puntos: izquierda, centro y
+  derecha de la pieza.
+
+Registra al jugador en el grupo "jugador" para que los objetos lo encuentren
+(get_tree().get_first_node_in_group("jugador")), o guárdalo en el autoload Juego.
+
+F11: alterna DisplayServer.WINDOW_MODE_FULLSCREEN / WINDOWED.
+
+--------------------------------------------------------------------------------
+6. ARQUITECTURA DE ARCHIVOS A CREAR
+--------------------------------------------------------------------------------
+
+AUTOLOAD (Proyecto > Configuración > Globales):
+  Juego   -> res://scripts/juego.gd
+     - nivel_actual (0 = tutorial, 1 = bosque)
+     - estadisticas: tiempo_juego, muertes, luciernagas_liberadas/total por
+       nivel, guardianas (0..3)
+     - referencia al jugador y al nivel
+     - punto_control actual
+     - funciones: nueva_partida(), ir_a_nivel(i), mostrar_historia(paginas, siguiente),
+       morir(mensaje), reaparecer(), toast(texto), mostrar_cartel(texto, es_nota),
+       guardar_progreso(), cargar_progreso() (user://progreso.cfg, guarda el
+       nivel más alto alcanzado para "Continuar en el nivel 2")
+     - señales: energia_cambiada, luciernagas_cambiadas, guardianas_cambiadas,
+       zona_cambiada, toast_pedido, cartel_cambiado
+  Audio   -> res://scripts/audio.gd  (opcional ahora)
+     - funciones vacías sfx_salto(), sfx_frasco(), sfx_guardiana(), sfx_dano(),
+       sfx_farol(), sfx_puerta(), sfx_muerte(), sfx_rebote(), sfx_curacion(),
+       musica(nombre). Por ahora no reproducen nada (no hay audio todavía);
+       el código del juego YA debe llamarlas en los momentos correctos.
+
+ESCENAS / SCRIPTS:
+  escenas/jugador/jugador.tscn          (existe; ampliar)
+  escenas/ui/hud.tscn + scripts/hud.gd  (CanvasLayer: barra, contadores, zona,
+                                         toast, cartel). Mover aquí la BarraLuz
+                                         y quitar el HUD de dentro del jugador.
+  escenas/ui/pantalla_titulo.tscn
+  escenas/ui/pantalla_historia.tscn     (texto por páginas, Enter/clic avanza)
+  escenas/ui/tarjeta_nivel.tscn         (nombre + objetivo al empezar cada nivel)
+  escenas/ui/pausa.tscn
+  escenas/ui/pantalla_muerte.tscn       (oscurece + mensaje, 1,5 s)
+  escenas/ui/pantalla_final.tscn        (estadísticas)
+  escenas/objetos/frasco.tscn
+  escenas/objetos/guardiana.tscn
+  escenas/objetos/farol.tscn
+  escenas/objetos/brasero.tscn
+  escenas/objetos/puerta_raices.tscn
+  escenas/objetos/flor.tscn
+  escenas/objetos/plataforma_luz.tscn   (UNA pieza de 48 px de ancho)
+  escenas/objetos/cartel.tscn           (con export es_nota: bool y texto)
+  escenas/objetos/peligro.tscn          (Area2D; export tipo: "agua"/"espinas")
+  escenas/objetos/salida.tscn
+  escenas/objetos/arbol_madre.tscn
+  escenas/enemigos/sombra.tscn          (export tipo: "patrulla"/"cazadora")
+  escenas/niveles/nivel.tscn + scripts/nivel.gd     (constructor genérico)
+  scripts/datos/nivel_1_sendero.gd      (datos del tutorial)
+  scripts/datos/nivel_2_bosque.gd       (datos del nivel completo)
+  scripts/datos/textos.gd               (textos de historia)
+
+Cada objeto con visual debe tener un nodo hijo "Visual" con su ColorRect /
+Polygon2D de marcador, del TAMAÑO EXACTO de la sección 11, y mouse_filter
+Ignore en todos los ColorRect. Así luego se reemplaza por el sprite.
+
+--------------------------------------------------------------------------------
+7. OBJETOS Y ENEMIGOS - COMPORTAMIENTO EXACTO
+--------------------------------------------------------------------------------
+(Distancias en px. "Tocar" = solapamiento de áreas.)
+
+7.1 Frasco con luciérnaga  (Area2D, capa 5)
+    - Marcador: frasco 48x48 con un punto amarillo brillante que flota (+-3 px).
+    - Lleva una PointLight2D pequeña (radio ~70 px) para verse en la oscuridad.
+    - Al tocarlo: se libera, +30 de energía (máx 100), estadística +1,
+      partículas amarillas, toast "Liberaste una luciérnaga: +30 de luz.",
+      Audio.sfx_frasco(), desaparece.
+
+7.2 Luciérnaga guardiana  (Area2D, capa 5) - SOLO NIVEL 2, hay 3
+    - Marcador: 48x48 verde agua, con anillo, luz fuerte (radio ~130 px).
+    - Al tocarla: energía a 100, guardianas +1, toast
+      "Luciérnaga guardiana rescatada (N/3). Tu luz está llena.", sacudida
+      leve de cámara.
+
+7.3 Farol de piedra = PUNTO DE CONTROL  (Area2D, capa 6)
+    - Marcador: 48x96 (base gris, cabeza oscura; encendido = cabeza naranja +
+      PointLight2D ~190 px).
+    - Al tocarlo por primera vez: se enciende, apaga el farol activo anterior,
+      Juego.punto_control = su posición, toast "Farol encendido: progreso
+      guardado.", Audio.sfx_farol().
+    - Mientras Lía está a menos de 180 px de un farol ACTIVO y su energía < 70:
+      recarga 33 por segundo hasta 70.
+
+7.4 Brasero  (Area2D, capa 6, export grupo: "a" | "b")
+    - Marcador: 48x96, cuenco gris.
+    - Si está iluminado de forma continua se "carga" 1 unidad por segundo
+      (barrita naranja encima); si deja de iluminarse la carga baja 0,6/s.
+    - Al llegar a 1.0: se enciende (luz naranja ~200 px), abre TODAS las
+      puertas de su grupo, sacudida de cámara, toast "El brasero se encendió.
+      Las raíces se abrieron.", Audio.sfx_puerta().
+
+7.5 Puerta de raíces  (StaticBody2D capa 1, export grupo)
+    - Ocupa 1 casilla de ancho y N de alto (según los datos del nivel).
+    - Marcador: café con líneas de raíz.
+    - Al abrirse: se desvanece en 0,67 s y desactiva su colisión.
+
+7.6 Flor trampolín  (Area2D capa 6)
+    - Marcador 48x48: cerrada = capullo morado; abierta = pétalos rosados + luz
+      tenue rosada.
+    - Si está iluminada -> "abierta" durante 1,6 s (el tiempo se renueva
+      mientras siga iluminada).
+    - Si Lía la toca CAYENDO (velocity.y >= 0) mientras está abierta:
+      velocity.y = -1455 (≈ 8,5 casillas de altura), Audio.sfx_rebote(),
+      partículas rosadas. Ese impulso NO se corta al soltar el botón de salto
+      (agrega en el jugador una variable "impulsado" que desactiva el salto
+      variable hasta tocar suelo).
+
+7.7 Plataforma de luz  (StaticBody2D capa 4, UNA pieza por casilla)
+    - Colisión: RectangleShape2D 48 x 24 en la mitad SUPERIOR de la casilla,
+      one_way_collision = true (sólida solo desde arriba).
+    - Solo existe (colisión activa + visible) mientras está iluminada. Al dejar
+      de estar iluminada permanece 0,5 s y se desvanece.
+    - Usa esta_iluminado() en 3 puntos (izq, centro, der).
+    - Oculta: cada ~2,5 s muestra un destello muy tenue (pista para el
+      jugador). Visible: dorada brillante.
+    - Activar/desactivar colisión con set_deferred("disabled", ...).
+
+7.8 Sombra de la Bruma  (CharacterBody2D o Area2D capa 3)
+    - Marcador 72x72: mancha oscura (casi negra, ligeramente violeta) con dos
+      ojos rojos brillantes (PointLight2D roja muy pequeña o puntos que
+      ignoren la oscuridad: material CanvasItemMaterial light_mode = UNSHADED).
+    - Flota (ondula +-3 px). NO se puede destruir.
+    - tipo "patrulla": va y viene entre x0 y x1 a 105 px/s.
+    - tipo "cazadora": si Lía está a < 10 casillas en x y < 6 en y, la
+      persigue a 142 px/s (168 px/s en la cueva) y se acerca en vertical a
+      60 px/s, limitada a +-3 casillas de su altura inicial y a [x0, x1].
+    - Si está iluminada: queda "asustada" 0,9 s; mientras tanto huye de Lía a
+      255 px/s, se ve más pequeña y transparente, y no hace daño.
+    - Contacto (no asustada y Lía sin invulnerabilidad): energía -25,
+      invulnerabilidad 1,2 s (Lía parpadea), empujón vx = +-330, vy = -420,
+      toast "Una sombra te tocó: perdiste luz.", Audio.sfx_dano().
+    - Al reaparecer Lía, todas las sombras vuelven a su posición inicial.
+    - Durante la entrega de luz final, todas quedan asustadas.
+
+7.9 Peligros  (Area2D capa 7)
+    - agua: muerte "El agua helada de la quebrada te arrastró."
+    - espinas: muerte "Las espinas te hicieron soltar la linterna."
+    - caer por debajo del mapa: muerte "Caíste al vacío."
+    - Marcadores: agua = azul oscuro con línea de oleaje animada; espinas =
+      triángulos morado oscuro.
+
+7.10 Muerte y reaparición
+    - Pausa la física del jugador, muestra pantalla_muerte (oscurece 0,6 s +
+      mensaje) durante 1,5 s, Juego.estadisticas.muertes += 1.
+    - Reaparece en Juego.punto_control (o en el inicio del nivel si no hay
+      farol), velocidad 0, energía = clamp(max(70, energía_actual), 0, 100),
+      invulnerable 1,2 s, sombras reiniciadas.
+
+7.11 Cartel y Nota de papá  (Area2D capa 6)
+    - Marcador 48x48 sobre un poste. Nota = papel claro inclinado; cartel =
+      tabla de madera.
+    - Si Lía está a < 2,5 casillas en x y < 3 en y del cartel más cercano,
+      el HUD muestra su texto en un recuadro abajo (ancho 1600 px, texto 34 px,
+      borde dorado si es cartel, color papel si es nota). Desaparece al alejarse.
+
+7.12 Salida del sendero (fin del tutorial)  (Area2D capa 6)
+    - Marcador 144x144: arco de madera con flecha.
+    - Al tocarla: historia PUENTE -> nivel 2.
+
+7.13 Árbol Madre  (Node2D + Area2D de 5 casillas a cada lado)
+    - Marcador 480x672: tronco + copa; color "seco" gris-café; al sanar,
+      interpola a verde/dorado. Andrés (96x48) acostado entre las raíces a la
+      izquierda del tronco, cubierto por una raíz.
+    - Si Lía entra en el área con guardianas < 3, mostrar cartel:
+      "El Árbol Madre está casi apagado. Necesita a las 3 luciérnagas
+       guardianas y solo traes N. Regresa a buscarlas."
+    - Con 3 guardianas, cartel:
+      "Papá está atrapado en las raíces. Mantén presionada E para entregarle
+       toda tu luz al Árbol Madre."
+    - Mientras se mantiene "entregar_luz": contador sube (al soltar baja al
+      mismo ritmo), la energía baja 40/s, partículas de luz viajan de la
+      linterna al árbol, la pantalla se oscurece casi por completo, la linterna
+      no se puede encender, todas las sombras huyen. Cartel durante la entrega:
+      "Sigue presionando E. Todo se queda a oscuras... y Lía no sale corriendo."
+    - Al llegar a 3 segundos: CURACIÓN (5 s): el árbol se enciende desde las
+      raíces, la oscuridad se aclara, cientos de partículas doradas suben,
+      la raíz que cubre a Andrés desaparece, Audio.sfx_curacion().
+      Después: historia FINAL -> pantalla_final.
+
+--------------------------------------------------------------------------------
+8. CONSTRUCTOR DE NIVELES (nivel.tscn + nivel.gd)
+--------------------------------------------------------------------------------
+
+Un solo script construye cualquier nivel a partir de un archivo de datos.
+El archivo de datos describe el nivel con COMANDOS en casillas:
+
+  tamano(ancho, alto)
+  inicio(x, y)                    casilla donde aparece Lía (sus pies en la fila y+1)
+  zona(x0, x1, nombre, oscuridad, es_cueva)
+  suelo(x0, x1, y)                rellena con roca desde la fila y hasta el fondo
+  bloque(x0, x1, y0, y1)          rectángulo sólido
+  plataforma_luz(x0, x1, y)       una pieza de plataforma de luz por casilla
+  agua(x0, x1, y)                 fila de agua (el peligro) en la fila y
+  espinas(x0, x1, y)
+  frasco(x, y)  guardiana(x, y)  farol(x, y)  flor(x, y)
+  brasero(x, y, grupo)            puerta(x, y0, y1, grupo)
+  cartel(x, y, texto)             nota(x, y, texto)   (nota = nota de papá)
+  sombra(tipo, x, y, x0, x1)      tipo = "patrulla" | "cazadora"
+  salida(x, y)                    arbol(x, y)
+
+Implementación sugerida:
+  - El mundo sólido va en un TileMapLayer (capa física 1 "mundo").
+  - Mientras no haya arte, el TileSet se crea POR CÓDIGO: un atlas de 48x48
+    generado con Image (colores: bosque #1b2a22 con borde superior de pasto
+    #2f5a3a; cueva #272220 con borde #3d352f; copa/madera #4a3624). Una sola
+    casilla sólida por tipo de terreno; el tipo depende de la zona. Deja una
+    constante RUTA_TILESET para cambiarlo por res://assets/tilesets/... cuando
+    llegue el arte (el arte final usará terrenos 3x3 de 13 piezas).
+  - Todo lo demás (objetos, peligros, enemigos) se instancia con sus .tscn.
+  - Une los tramos horizontales de agua/espinas en un solo Area2D por tramo.
+  - Límites de la cámara = tamaño del nivel (0..ancho*48, 0..alto*48).
+  - La cámara mira 90 px hacia adelante en la dirección de Lía.
+  - Agrega un CanvasModulate cuyo color depende de la ZONA en la que está Lía
+    (interpolar suave, ~0,5 s). Tabla de oscuridad -> color:
+        0.62 -> #3a4560 (luz de luna, inicio del tutorial)
+        0.80 -> #1a2238 (bosque de noche)
+        0.85 -> #151b2e
+        0.88 -> #100f16 (cueva)
+        entregando la luz -> #050508
+  - Fondo provisional: un ParallaxBackground (o Parallax2D) con 3 capas de
+    rectángulos/siluetas de árboles generadas por código (colores #0c1a1d,
+    #091416 y una franja de neblina #96aca6 al 7 % de opacidad) para dar
+    profundidad. En la cueva, fondo de roca #17130f.
+  - El HUD muestra el nombre de la zona actual.
+
+--------------------------------------------------------------------------------
+9. DATOS DE LOS NIVELES
+--------------------------------------------------------------------------------
+(Diseño ya probado en un prototipo previo con las mismas proporciones de salto.
+ Si algún tramo resulta imposible o demasiado fácil en Godot, ajústalo y dile al
+ usuario qué cambiaste.)
+
+---------------- NIVEL 1 · EL SENDERO (TUTORIAL) ----------------
+Nombre en pantalla: "Nivel 1 · El sendero"    Subtítulo: "Tutorial"
+Objetivo: "Aprende a usar la linterna y llega al final del sendero."
+
+tamano(130, 18)
+zona(0, 18, "El sendero", 0.62, false)
+zona(18, 130, "El sendero", 0.80, false)
+inicio(2, 13)
+
+# 1. Caminar y saltar
+suelo(0, 22, 14)
+cartel(4, 13, "Usa A y D (o las flechas) para caminar. Salta con W, la flecha hacia arriba o Espacio.")
+bloque(10, 11, 13, 13)
+bloque(15, 16, 12, 13)
+
+# 2. Linterna y plataforma de luz
+cartel(18, 13, "Está muy oscuro. Mantén presionado el clic izquierdo (o F) para encender la linterna. Apunta con el mouse.")
+cartel(21, 13, "Sobre el agua hay una plataforma escondida. Ilumínala y salta encima: solo existe mientras la luz la toca.")
+agua(23, 29, 15)
+bloque(23, 29, 16, 17)
+plataforma_luz(25, 27, 12)
+
+# 3. La luz se gasta, frascos y faroles
+suelo(30, 95, 14)
+cartel(32, 13, "Mira la barra de LUZ arriba a la izquierda: baja mientras la linterna está encendida. Úsala solo cuando la necesites.")
+cartel(35, 13, "Toca los frascos para liberar luciérnagas. Cada una recarga parte de tu luz.")
+frasco(38, 13)
+farol(41, 13)
+cartel(44, 13, "Los faroles de piedra guardan tu progreso y recargan un poco de luz. Si la luz llega a cero, la Bruma te regresa al último farol.")
+
+# 4. Sombras
+cartel(49, 13, "Una sombra de la Bruma. No puedes vencerla, pero le teme a la luz: apúntale para alejarla. Si te toca, pierdes luz.")
+sombra("patrulla", 56, 13, 52, 62)
+frasco(60, 13)
+
+# 5. Flor trampolín
+cartel(66, 13, "Esa pared es muy alta. Ilumina la flor para que se abra y camina sobre ella para salir disparada hacia arriba.")
+flor(69, 13)
+bloque(71, 72, 8, 13)
+farol(77, 13)
+
+# 6. Brasero y puerta
+cartel(80, 13, "Las raíces bloquean el camino. Ilumina el brasero hasta que se encienda para abrir el paso.")
+brasero(83, 13, "a")
+puerta(87, 8, 13, "a")
+
+# 7. Reto final del tutorial
+cartel(92, 13, "Dos plataformas escondidas seguidas. Mantén la luz encendida mientras saltas de una a otra.")
+agua(96, 106, 15)
+bloque(96, 106, 16, 17)
+plataforma_luz(98, 99, 12)
+plataforma_luz(102, 103, 11)
+frasco(103, 9)
+suelo(107, 129, 14)
+farol(108, 13)
+cartel(111, 13, "Otra sombra vigila el camino. Recuerda: la luz la aleja, pero también se gasta.")
+sombra("patrulla", 117, 13, 113, 122)
+frasco(119, 13)
+cartel(124, 13, "Aquí termina el sendero. Las huellas de papá siguen hacia el bosque profundo.")
+salida(127, 13)
+
+---------------- NIVEL 2 · EL CORAZÓN DEL BOSQUE (COMPLETO) ----------------
+Nombre: "Nivel 2 · El corazón del bosque"    Subtítulo: "Nivel completo"
+Objetivo: "Rescata a las 3 luciérnagas guardianas y llega al Árbol Madre para salvar a tu papá."
+Condición de victoria: 3 guardianas + entregar la luz al Árbol Madre.
+
+tamano(252, 22)
+zona(0, 86, "Zona 1 · La quebrada", 0.80, false)
+zona(86, 171, "Zona 2 · La cueva", 0.88, true)
+zona(171, 207, "Zona 3 · La copa de los árboles", 0.80, false)
+zona(207, 252, "Zona 4 · El Árbol Madre", 0.85, false)
+inicio(2, 17)
+
+# Zona 1: la quebrada
+suelo(0, 12, 18)
+nota(4, 17, "Nota de papá: \"La Bruma sale del Árbol Madre. Las tres luciérnagas guardianas pueden sanarlo.\"")
+farol(7, 17)
+agua(13, 30, 19)
+bloque(13, 30, 20, 21)
+plataforma_luz(15, 16, 16)
+plataforma_luz(19, 20, 15)
+plataforma_luz(23, 24, 16)
+plataforma_luz(27, 28, 15)
+frasco(20, 13)
+suelo(31, 49, 18)
+nota(33, 17, "Nota de papá: \"Las sombras no mueren. Solo se apartan de la luz.\"")
+sombra("patrulla", 40, 17, 35, 45)
+frasco(43, 17)
+plataforma_luz(46, 47, 15)
+bloque(50, 62, 12, 21)
+farol(52, 11)
+nota(54, 11, "Nota de papá: \"Los braseros viejos todavía abren los pasos de raíces.\"")
+brasero(56, 11, "a")
+puerta(59, 6, 11, "a")
+guardiana(61, 11)                                   # GUARDIANA 1
+suelo(63, 94, 18)
+nota(67, 17, "Nota de papá: \"Las flores nocturnas se abren con la luz y te impulsan hacia arriba.\"")
+frasco(70, 17)
+flor(73, 17)
+bloque(75, 76, 11, 17)
+frasco(81, 17)
+
+# Zona 2: la cueva (techo de roca)
+bloque(86, 170, 0, 9)
+farol(89, 17)
+nota(91, 17, "Nota de papá: \"En la cueva la oscuridad pesa más. No gastes la luz sin necesidad.\"")
+suelo(95, 104, 18)
+espinas(95, 104, 17)
+plataforma_luz(96, 97, 15)
+plataforma_luz(99, 100, 14)
+plataforma_luz(102, 103, 15)
+frasco(100, 12)
+suelo(105, 126, 18)
+sombra("patrulla", 110, 17, 106, 116)
+frasco(114, 17)
+brasero(119, 17, "b")
+sombra("cazadora", 123, 17, 112, 125)
+puerta(126, 10, 17, "b")
+suelo(127, 144, 18)
+nota(128, 17, "Nota de papá: \"Vi una luciérnaga guardiana en lo alto de la cueva.\"")
+farol(130, 17)
+flor(132, 17)
+bloque(134, 138, 12, 12)
+guardiana(136, 11)                                  # GUARDIANA 2
+agua(145, 155, 19)
+bloque(145, 155, 20, 21)
+plataforma_luz(147, 148, 16)
+plataforma_luz(151, 152, 15)
+sombra("cazadora", 151, 13, 146, 156)
+suelo(156, 185, 18)
+frasco(160, 17)
+farol(165, 17)
+
+# Zona 3: la copa de los árboles
+nota(176, 17, "Nota de papá: \"Subí por el tronco del higuerón para cruzar el barranco de espinas.\"")
+bloque(186, 187, 4, 21)              # tronco
+bloque(181, 182, 15, 15)             # rama sólida
+plataforma_luz(184, 185, 12)
+plataforma_luz(181, 182, 9)
+bloque(184, 185, 6, 6)               # rama sólida
+farol(187, 3)
+suelo(188, 206, 20)
+espinas(188, 206, 19)
+plataforma_luz(190, 191, 4)
+plataforma_luz(194, 195, 5)
+plataforma_luz(198, 199, 4)
+frasco(195, 2)
+sombra("cazadora", 196, 2, 189, 201)
+bloque(202, 206, 4, 4)
+farol(203, 3)
+guardiana(205, 3)                                   # GUARDIANA 3
+
+# Zona 4: el Árbol Madre
+suelo(207, 251, 18)
+farol(210, 17)
+nota(213, 17, "Nota de papá: \"Si llegas hasta aquí, Lía, recuerda lo que decía la abuela: la luz no es para guardarla.\"")
+frasco(218, 17)
+sombra("patrulla", 225, 17, 217, 234)
+sombra("cazadora", 222, 15, 214, 236)
+sombra("cazadora", 231, 17, 218, 237)
+frasco(232, 17)
+arbol(245, 17)
+
+--------------------------------------------------------------------------------
+10. FLUJO DEL JUEGO Y TEXTOS
+--------------------------------------------------------------------------------
+
+Orden:
+  Pantalla de título
+    "Neblina" (grande) · "La luz se gasta. El miedo también."
+    Enter / clic: Nueva partida
+    C: Continuar en el nivel 2 (solo si ya se llegó)
+    Fondo animado: bosque oscuro con luciérnagas flotando.
+  -> Historia INTRO (5 páginas)
+  -> Tarjeta "Nivel 1 · El sendero" + objetivo (Enter/clic para empezar)
+  -> Nivel 1
+  -> (al tocar la salida) Historia PUENTE (3 páginas)
+  -> Tarjeta "Nivel 2 · El corazón del bosque" + objetivo
+  -> Nivel 2
+  -> (al entregar la luz) Curación 5 s -> Historia FINAL (4 páginas)
+  -> Pantalla final con estadísticas:
+       Tiempo de juego: M:SS
+       Luciérnagas liberadas: X de Y
+       Luciérnagas guardianas: 3 de 3
+       Veces que la Bruma te alcanzó: N
+       Enter / clic: volver al menú
+
+Pantalla de historia: fondo #05090c, una linterna dibujada arriba (encendida;
+apagada en la 1.ª página del final), texto centrado, ~44 px, ancho máx 1400 px,
+aparece con fundido de 0,6 s, indicador "N / total" y "Enter o clic para
+continuar". No permite avanzar antes de 0,35 s.
+
+Pausa (Escape): oscurece y muestra
+  "Pausa" · controles · tiempo de juego y muertes
+  Enter: continuar · R: reiniciar nivel · Q: menú principal
+
+Toast: mensaje corto centrado arriba (dorado #e8d86a) durante 2,6 s.
+
+HUD: barra de LUZ (arriba izq), nombre de zona (arriba centro), contador de
+luciérnagas "X/Y" (arriba der) y en el nivel 2 también "Guardianas N/3".
+
+TEXTOS DE HISTORIA
+
+INTRO:
+ 1. "San Isidro de las Nubes. Lía tiene doce años, trepa árboles mejor que nadie y todavía duerme con la luz encendida."
+ 2. "Su abuela le contaba que las luciérnagas guardan la luz que mantiene vivo al bosque nuboso. Lía siempre pensó que era un cuento para dormir."
+ 3. "Una noche bajó del cerro una neblina negra. La gente del pueblo la llamó la Bruma. Las luciérnagas desaparecieron."
+ 4. "Andrés, su papá guardaparques, entró al bosque a revisar los senderos. No regresó."
+ 5. "Lía descolgó la vieja linterna de la abuela. Estaba apagada, hasta que una luciérnaga perdida se metió dentro. Entonces brilló."
+
+PUENTE:
+ 1. "Al final del sendero, Lía encontró una nota clavada en un poste, con la letra de su papá."
+ 2. "\"La Bruma sale del Árbol Madre. Se está secando porque perdió su luz. Las tres luciérnagas guardianas pueden ayudarlo.\""
+ 3. "Lía apretó la linterna y siguió hacia el corazón del bosque."
+
+FINAL:
+ 1. "Lía entregó toda su luz. La linterna se apagó y todo quedó negro. Por primera vez, no salió corriendo."
+ 2. "El Árbol Madre se encendió desde las raíces hasta la copa. La Bruma se deshizo como humo en el viento."
+ 3. "Entre las raíces, Andrés abrió los ojos. Las luciérnagas volvieron a llenar el bosque."
+ 4. "Esa noche, en San Isidro de las Nubes, Lía apagó la luz para dormir."   (en dorado)
+
+Relación con el Story Circle (para que lo tengas presente al diseñar):
+  1 Tú: Lía con miedo a la oscuridad · 2 Necesidad: la Bruma y su papá perdido
+  3 Ir: entra al bosque (intro) · 4 Buscar: aprende la luz (tutorial)
+  5 Encontrar: llega al Árbol Madre · 6 Pagar el precio: entrega toda su luz
+  7 Regresar: la Bruma se va · 8 Cambio: apaga la luz para dormir.
+  El paso 6 se VIVE con la mecánica: el jugador cuida la luz todo el juego y
+  al final debe soltarla él mismo manteniendo E.
+
+--------------------------------------------------------------------------------
+11. ARTE FUTURO - NOMBRES Y MEDIDAS (NO DIBUJAR NADA AHORA)
+--------------------------------------------------------------------------------
+El usuario dibujará todo en HD. Usa estas medidas para los marcadores de color
+y estos nombres de animación en el código (SpriteFrames), para que el cambio
+sea directo. Cada animación será un PNG en tira horizontal.
+
+LÍA  (cuadro 72x96, origen en los pies, mira a la derecha)
+  lia_idle (4 cuadros, 6 fps) · lia_caminar (8, 12) · lia_saltar (2, 8)
+  lia_caer (2, 8) · lia_aterrizar (2, 12) · lia_dano (2, 10)
+  lia_desmayo (6, 10) · lia_entregar (6, 6)
+  Estados -> animación: en el suelo quieta = idle; en el suelo moviéndose =
+  caminar; velocity.y < 0 = saltar; velocity.y > 0 en el aire = caer; al tocar
+  suelo = aterrizar (una vez); empujada por sombra = dano; muerte = desmayo;
+  entregando la luz = entregar.
+  NOTA: el marcador actual es 36x84; cuando llegue el sprite de 72x96 la
+  colisión se mantiene en 36x84.
+
+SOMBRA 72x72: sombra_flotar (4, 8) · sombra_asustada (3, 10) · sombra_aparecer (4, 10)
+ANDRÉS 96x48: andres_atrapado (2, 3) · andres_despierta (4, 6)
+LUCIÉRNAGA 24x24: luciernaga (4, 10)
+GUARDIANA 48x48: guardiana (6, 8)
+FRASCO 48x48: frasco_brillo (4, 6) · frasco_romper (4, 12)
+FAROL 48x96: farol_apagado (1) · farol_encender (3, 10) · farol_encendido (4, 8)
+BRASERO 48x96: brasero_apagado (1) · brasero_encendido (4, 10)
+PUERTA 48x144 (3 casillas; si la puerta es más alta, se repite): puerta_cerrada (1) · puerta_abrir (6, 10)
+FLOR 48x48: flor_cerrada (1) · flor_abrir (3, 12) · flor_abierta (2, 4) · flor_rebote (3, 15)
+PLATAFORMA DE LUZ: piezas 48x24 plataforma_izq · plataforma_centro · plataforma_der
+CARTEL 48x48 · NOTA 48x48 · SALIDA 144x144
+ÁRBOL MADRE 480x672: arbol_seco · arbol_sanado · arbol_brillo (4, 6)
+TILESETS 48x48 (13 piezas, imagen 192x192): tileset_bosque · tileset_cueva · tileset_copa
+AGUA: agua_superficie (4, 6) · agua_profunda · ESPINAS: espinas (2 variantes)
+FONDOS 1920x1080 repetibles: bosque (cielo, montañas, árboles lejanos, neblina), cueva (roca, estalactitas)
+UI: ui_barra_marco 384x48 · ui_barra_relleno 360x28 · ui_icono_luciernaga 24x24
+    ui_icono_guardiana 36x36 · ui_cuadro_texto 144x144 (9-slice, márgenes 48)
+    logo_neblina 600x180
+HISTORIA (opcional) 1920x1080: historia_1_cuarto ... historia_5_dormir
+
+--------------------------------------------------------------------------------
+12. PLAN DE FASES (UNA A LA VEZ, CON CONFIRMACIÓN DEL USUARIO)
+--------------------------------------------------------------------------------
+
+FASE 2 - Linterna  (verificar / completar)
+  Noche (CanvasModulate), Cono y Aura generados por código, barra de luz,
+  gasto, muerte sin luz -> vuelve al inicio, F11, esta_iluminado() con la
+  regla de los pies.
+  Prueba: cono sigue al mouse, Lía se voltea, barra baja y se pone roja,
+  al llegar a 0 reaparece, F11 funciona.
+
+FASE 3 - Autoload Juego + HUD + objetos básicos
+  juego.gd, audio.gd (vacío), hud.tscn (mover la barra), toasts, carteles.
+  Frasco, farol (punto de control + recarga), plataforma de luz.
+  En nivel_prueba coloca: 1 frasco, 1 farol, 3 piezas de plataforma de luz
+  sobre un hueco, 1 cartel.
+  Prueba: frasco recarga +30, farol guarda y recarga hasta 70, plataforma
+  aparece solo con luz y aguanta a Lía al apuntar a otra parte cerca.
+
+FASE 4 - Peligros, muerte, flor, brasero, puerta, sombras
+  pantalla_muerte, reaparición, agua, espinas, caída al vacío, flor
+  trampolín, brasero + puerta, sombras patrulla y cazadora (asustadas con luz).
+  Agrégalos a nivel_prueba para probar.
+
+FASE 5 - Constructor de niveles + Nivel 1 completo
+  nivel.tscn/nivel.gd, TileSet generado por código, zonas con oscuridad,
+  parallax provisional, cámara con límites, datos del Nivel 1, salida.
+  Nivel 1 pasa a ser la escena de juego (todavía sin menú).
+  Prueba: recorrer todo el tutorial; cada cartel enseña lo que viene.
+
+FASE 6 - Nivel 2 completo
+  Datos del Nivel 2, guardianas, contador "Guardianas N/3", Árbol Madre con
+  la entrega de luz y la curación, Andrés.
+  Prueba: recorrer el nivel 2 completo y terminarlo.
+
+FASE 7 - Flujo completo
+  Título, historias (intro, puente, final), tarjetas de nivel, pausa,
+  pantalla final con estadísticas, guardado de progreso (Continuar),
+  escena principal = pantalla de título.
+
+FASE 8 - Pulido y duración
+  Animación de parpadeo con poca luz, sacudidas de cámara, partículas,
+  invulnerabilidad visible, transiciones con fundido.
+  MIDE la duración: una persona que no conoce el juego debe tardar 10 min o
+  más (tutorial 3-4 min + nivel 2 6-9 min + historias). Si queda corto,
+  agrega tramos al nivel 2 (no al tutorial) usando las mismas piezas y avisa.
+  Prepara exportación: modo Fullscreen en el preset de exportación,
+  ejecutable Windows con PCK incrustado y versión Web.
+
+FASE 9 - Arte (MÁS ADELANTE, cuando el usuario entregue los PNG)
+  Reemplazar marcadores por AnimatedSprite2D/Sprite2D con los nombres de la
+  sección 11, TileSet de archivos con terrenos 3x3, fondos parallax reales,
+  UI con texturas.
+
+--------------------------------------------------------------------------------
+13. CRÉDITOS (para el documento de entrega)
+--------------------------------------------------------------------------------
+Lleva una lista en docs/creditos.txt de todo recurso externo que se agregue
+(nombre, autor, licencia, enlace). El código se escribe con ayuda de IA
+(Claude / Claude Code): eso también debe quedar anotado en las referencias,
+como exige el enunciado del curso.
+
+================================================================================
+FIN
+================================================================================
