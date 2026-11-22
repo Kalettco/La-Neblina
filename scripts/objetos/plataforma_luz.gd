@@ -1,9 +1,10 @@
 extends StaticBody2D
 ## Plataforma de luz: UNA pieza de 48 px. Solo existe mientras la linterna la ilumina.
-## Al dejar de iluminarse aguanta 0,5 s y luego se desvanece.
+## Al dejar de iluminarse aguanta "tiempo_gracia" (0,5 s; 1,5 s en la copa) y luego se desvanece.
 ## Origen = centro inferior de la casilla; la pieza ocupa la mitad SUPERIOR.
 
-const TIEMPO_GRACIA: float = 0.5          # sigue sólida después de perder la luz
+## Segundos que sigue sólida después de perder la luz (el nivel puede cambiarlo por zona).
+@export var tiempo_gracia: float = 0.5
 const TIEMPO_DESVANECER: float = 0.25
 const PERIODO_DESTELLO: float = 2.5       # pista mientras está oculta
 const DURACION_DESTELLO: float = 0.5
@@ -30,7 +31,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		_sin_luz += delta
 
-	var debe_existir: bool = _sin_luz <= TIEMPO_GRACIA
+	var debe_existir: bool = _sin_luz <= tiempo_gracia
 	if debe_existir != _existe:
 		_poner_existencia(debe_existir)
 	_actualizar_aspecto(delta)
@@ -63,5 +64,5 @@ func _actualizar_aspecto(delta: float) -> void:
 	var destello: float = 0.0
 	if _reloj_destello < DURACION_DESTELLO:
 		destello = sin(_reloj_destello / DURACION_DESTELLO * PI) * ALFA_DESTELLO
-	var desvanecer: float = 1.0 - (_sin_luz - TIEMPO_GRACIA) / TIEMPO_DESVANECER
+	var desvanecer: float = 1.0 - (_sin_luz - tiempo_gracia) / TIEMPO_DESVANECER
 	visual.modulate.a = maxf(clampf(desvanecer, 0.0, 1.0), destello)

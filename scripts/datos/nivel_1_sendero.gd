@@ -32,7 +32,7 @@ static func construir(n: Nivel) -> void:
 	n.cartel(35, 13, "Toca los frascos para liberar luciérnagas. Cada una recarga parte de tu luz.")
 	n.frasco(38, 13)
 	n.farol(41, 13)
-	n.cartel(44, 13, "Los faroles de piedra guardan tu progreso y recargan un poco de luz. Si la luz llega a cero, la Bruma te regresa al último farol.")
+	n.cartel(44, 13, "Los faroles de piedra guardan tu progreso. Cerca del farol encendido, haz clic derecho para recargar tu luz. Si la luz llega a cero, la Bruma te regresa al último farol.")
 
 	# 4. Sombras
 	n.cartel(49, 13, "Una sombra de la Bruma. No puedes vencerla, pero le teme a la luz: apúntale para alejarla. Si te toca, pierdes luz.")

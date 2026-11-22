@@ -14,6 +14,7 @@ const DISTANCIA_CARTEL_X: float = 2.5 * 48.0
 const DISTANCIA_CARTEL_Y: float = 3.0 * 48.0
 const DURACION_MUERTE: float = 1.5
 const ESCENA_MUERTE: PackedScene = preload("res://escenas/ui/pantalla_muerte.tscn")
+const RUTA_ESCENA_NIVEL: String = "res://escenas/niveles/nivel.tscn"
 
 var nivel_actual: int = 0          # 0 = tutorial, 1 = bosque
 var estadisticas: Dictionary = {}
@@ -24,6 +25,7 @@ var en_cueva: bool = false         # las cazadoras van más rápido en la cueva
 var limite_vacio: float = 1600.0   # si Lía cae más abajo de esta y, muere (lo ajusta el nivel)
 var todas_asustadas: bool = false  # durante la entrega de luz final
 var entregando_luz: bool = false   # la pantalla se oscurece casi por completo
+var curando: bool = false          # el Árbol Madre está sanando: la oscuridad se aclara
 var muriendo: bool = false
 var nivel_terminado: bool = false
 
@@ -54,12 +56,17 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if not (event is InputEventKey and event.pressed and not event.echo):
+		return
 	# F11: alterna pantalla completa / ventana
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F11:
+	if event.keycode == KEY_F11:
 		if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 		else:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	# F9 (solo durante el desarrollo): saltar al nivel 2 para probarlo
+	elif event.keycode == KEY_F9 and OS.is_debug_build():
+		ir_a_nivel(1)
 
 
 # --- Partida y estadísticas ---
@@ -90,6 +97,12 @@ func liberar_luciernaga() -> void:
 	_avisar_luciernagas()
 
 
+## Un frasco reapareció porque Lía murió antes de llegar a otro farol.
+func devolver_luciernaga() -> void:
+	estadisticas["luciernagas_liberadas"][nivel_actual] -= 1
+	_avisar_luciernagas()
+
+
 func _avisar_luciernagas() -> void:
 	luciernagas_cambiadas.emit(
 		estadisticas["luciernagas_liberadas"][nivel_actual],
@@ -116,19 +129,49 @@ func iniciar_nivel(nuevo_nivel: Node) -> void:
 	en_cueva = false
 	todas_asustadas = false
 	entregando_luz = false
+	curando = false
 	nivel_terminado = false
 	_cartel_forzado = ""
 	_texto_cartel_mostrado = ""
 
 
-## Lía llegó a la salida del nivel.
-## Por ahora (Fase 5) solo avisa; en las fases 6 y 7 lleva a la historia y al nivel 2.
+## Carga el nivel i (0 = tutorial, 1 = bosque) con el constructor de niveles.
+func ir_a_nivel(indice: int) -> void:
+	nivel_actual = indice
+	jugador = null
+	muriendo = false
+	guardar_progreso()
+	get_tree().paused = false
+	get_tree().change_scene_to_file(RUTA_ESCENA_NIVEL)
+
+
+## Lía llegó a la salida del tutorial.
+## (En la Fase 7 aquí se muestra antes la historia PUENTE.)
 func completar_nivel() -> void:
 	if nivel_terminado:
 		return
 	nivel_terminado = true
-	guardar_progreso()
 	toast("Llegaste al final del sendero.")
+	await get_tree().create_timer(1.5).timeout
+	ir_a_nivel(nivel_actual + 1)
+
+
+func rescatar_guardiana() -> void:
+	estadisticas["guardianas"] += 1
+	guardianas_cambiadas.emit(estadisticas["guardianas"])
+
+
+func guardianas() -> int:
+	return estadisticas["guardianas"]
+
+
+## El Árbol Madre sanó: fin del juego.
+## (En la Fase 7 aquí se muestra la historia FINAL y la pantalla de estadísticas.)
+func completar_juego() -> void:
+	if nivel_terminado:
+		return
+	nivel_terminado = true
+	toast("El Árbol Madre sanó. Papá está libre.")
 
 
 func cambiar_zona(nombre: String) -> void:
@@ -155,6 +198,9 @@ func activar_farol(farol: Farol) -> void:
 	farol_activo = farol
 	punto_control = farol.global_position
 	hay_punto_control = true
+	# Lo liberado hasta aquí queda guardado
+	for frasco: Node in get_tree().get_nodes_in_group("frascos"):
+		frasco.call("confirmar")
 	toast("Farol encendido: progreso guardado.")
 	Audio.sfx_farol()
 
@@ -186,6 +232,9 @@ func reaparecer() -> void:
 		jugador.reaparecer(obtener_punto_reaparicion())
 	for sombra: Node in get_tree().get_nodes_in_group("sombras"):
 		sombra.call("reiniciar")
+	# Los frascos agarrados después del último farol vuelven a aparecer
+	for frasco: Node in get_tree().get_nodes_in_group("frascos"):
+		frasco.call("restaurar")
 
 
 func sacudir_camara(fuerza: float, duracion: float) -> void:

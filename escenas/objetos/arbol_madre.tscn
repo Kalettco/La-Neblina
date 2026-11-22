@@ -1,0 +1,97 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/objetos/arbol_madre.gd" id="1_arbol"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_area"]
+size = Vector2(528, 384)
+
+[sub_resource type="Gradient" id="Gradient_chispas"]
+colors = PackedColorArray(1, 0.95, 0.6, 1, 1, 0.8, 0.3, 0)
+
+[node name="ArbolMadre" type="Node2D"]
+script = ExtResource("1_arbol")
+
+[node name="Area" type="Area2D" parent="."]
+collision_layer = 32
+collision_mask = 2
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Area"]
+position = Vector2(0, -192)
+shape = SubResource("RectangleShape2D_area")
+
+[node name="Visual" type="Node2D" parent="."]
+
+[node name="Copa" type="Polygon2D" parent="Visual"]
+polygon = PackedVector2Array(-240, -470, -200, -580, -110, -650, 0, -672, 110, -650, 200, -580, 240, -470, 210, -380, 100, -350, 0, -360, -100, -350, -210, -380)
+
+[node name="Tronco" type="Polygon2D" parent="Visual"]
+polygon = PackedVector2Array(-60, 0, -48, -200, -40, -400, 40, -400, 48, -200, 60, 0)
+
+[node name="Raices" type="Polygon2D" parent="Visual"]
+polygon = PackedVector2Array(-230, 0, -120, -26, -60, -60, 60, -60, 120, -26, 230, 0)
+
+[node name="Andres" type="Node2D" parent="Visual"]
+position = Vector2(-160, 0)
+
+[node name="Cuerpo" type="ColorRect" parent="Visual/Andres"]
+offset_left = -48.0
+offset_top = -28.0
+offset_right = 26.0
+mouse_filter = 2
+color = Color(0.38, 0.42, 0.26, 1)
+
+[node name="Cabeza" type="ColorRect" parent="Visual/Andres"]
+offset_left = 26.0
+offset_top = -30.0
+offset_right = 48.0
+offset_bottom = -8.0
+mouse_filter = 2
+color = Color(0.78, 0.6, 0.46, 1)
+
+[node name="Sombrero" type="ColorRect" parent="Visual/Andres"]
+offset_left = 24.0
+offset_top = -36.0
+offset_right = 48.0
+offset_bottom = -28.0
+mouse_filter = 2
+color = Color(0.45, 0.35, 0.2, 1)
+
+[node name="RaizAndres" type="Polygon2D" parent="Visual"]
+color = Color(0.3, 0.2, 0.12, 1)
+polygon = PackedVector2Array(-220, -4, -190, -42, -150, -48, -100, -40, -60, -60, -50, -40, -95, -20, -150, -22, -200, 0)
+
+[node name="Brillo" type="PointLight2D" parent="."]
+position = Vector2(0, -400)
+color = Color(0.6, 0.65, 0.8, 1)
+energy = 0.25
+
+[node name="ChispasEntrega" type="CPUParticles2D" parent="."]
+emitting = false
+amount = 40
+lifetime = 0.9
+direction = Vector2(1, 0)
+spread = 6.0
+gravity = Vector2(0, 0)
+initial_velocity_min = 200.0
+initial_velocity_max = 220.0
+scale_amount_min = 3.0
+scale_amount_max = 6.0
+color_ramp = SubResource("Gradient_chispas")
+
+[node name="ChispasCuracion" type="CPUParticles2D" parent="."]
+emitting = false
+amount = 300
+lifetime = 3.0
+one_shot = true
+explosiveness = 0.2
+emission_shape = 3
+emission_rect_extents = Vector2(240, 300)
+direction = Vector2(0, -1)
+spread = 25.0
+gravity = Vector2(0, -40)
+initial_velocity_min = 30.0
+initial_velocity_max = 110.0
+scale_amount_min = 3.0
+scale_amount_max = 7.0
+color_ramp = SubResource("Gradient_chispas")

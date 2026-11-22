@@ -3,11 +3,13 @@ extends Area2D
 ## Farol de piedra = punto de control.
 ## Al tocarlo la primera vez se enciende y guarda el progreso.
 ## Si es el farol activo y Lía está cerca con poca luz, la recarga hasta 70.
+## Con clic derecho cerca del farol activo, la luz se llena hasta 100.
 ## Origen = centro inferior de la casilla (pie del farol).
 
 const RADIO_RECARGA: float = 180.0
 const RECARGA_POR_SEGUNDO: float = 33.0
 const LIMITE_RECARGA: float = 70.0
+const RECARGA_MANUAL_POR_SEGUNDO: float = 120.0   # clic derecho: se llena en menos de 1 s
 const COLOR_APAGADO: Color = Color(0.16, 0.16, 0.18)
 const COLOR_ENCENDIDO: Color = Color(1.0, 0.6, 0.2)
 
@@ -16,6 +18,7 @@ const COLOR_ENCENDIDO: Color = Color(1.0, 0.6, 0.2)
 
 var encendido: bool = false     # ya se encendió alguna vez
 var activo: bool = false        # es el punto de control actual
+var _recarga_manual: bool = false
 
 
 func _ready() -> void:
@@ -31,8 +34,24 @@ func _physics_process(delta: float) -> void:
 	var jugador: Jugador = Juego.jugador
 	if not is_instance_valid(jugador):
 		return
-	if jugador.global_position.distance_to(global_position) < RADIO_RECARGA:
-		jugador.recargar_hasta(RECARGA_POR_SEGUNDO * delta, LIMITE_RECARGA)
+	var cerca: bool = not jugador.muerto \
+			and jugador.global_position.distance_to(global_position) < RADIO_RECARGA
+	if not cerca:
+		_recarga_manual = false
+		return
+	jugador.recargar_hasta(RECARGA_POR_SEGUNDO * delta, LIMITE_RECARGA)
+
+	# Clic derecho cerca del farol activo: llena la luz hasta el máximo
+	if Input.is_action_just_pressed("recargar_luz") and jugador.energia < jugador.energia_maxima:
+		_recarga_manual = true
+		Juego.toast("El farol recarga tu luz.")
+		Audio.sfx_farol()
+	if _recarga_manual:
+		jugador.recargar(RECARGA_MANUAL_POR_SEGUNDO * delta)
+		luz.energy = 1.0 + 0.4 * sin(Time.get_ticks_msec() * 0.02)   # el farol late mientras recarga
+		if jugador.energia >= jugador.energia_maxima:
+			_recarga_manual = false
+			luz.energy = 1.0
 
 
 func _al_entrar_cuerpo(cuerpo: Node2D) -> void:

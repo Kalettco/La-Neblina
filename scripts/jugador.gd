@@ -44,6 +44,7 @@ var _energia_avisada: float = -1.0      # último valor enviado al HUD
 # --- Daño, impulso y cámara ---
 var invulnerable: float = 0.0           # segundos que quedan sin poder recibir daño
 var impulsado: bool = false             # rebote de flor: no se corta al soltar el salto
+var bloqueado: bool = false             # sin caminar ni saltar (entrega de luz final)
 var _sin_control: float = 0.0
 var _sacudida: float = 0.0
 var _sacudida_duracion: float = 0.0
@@ -112,7 +113,7 @@ func _procesar_salto(delta: float) -> void:
 		_coyote -= delta
 
 	# Buffer de salto
-	if Input.is_action_just_pressed("saltar"):
+	if Input.is_action_just_pressed("saltar") and not bloqueado:
 		_buffer = tiempo_buffer_salto
 	else:
 		_buffer -= delta
@@ -133,7 +134,7 @@ func _procesar_salto(delta: float) -> void:
 func _procesar_movimiento(delta: float) -> void:
 	if _sin_control > 0.0:
 		return
-	var direccion: float = Input.get_axis("mover_izquierda", "mover_derecha")
+	var direccion: float = 0.0 if bloqueado else Input.get_axis("mover_izquierda", "mover_derecha")
 	if direccion != 0.0:
 		velocity.x = move_toward(velocity.x, direccion * velocidad, aceleracion * delta)
 		mirando = 1 if direccion > 0.0 else -1
