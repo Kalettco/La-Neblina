@@ -23,7 +23,9 @@ var zona_actual: String = ""
 var en_cueva: bool = false         # las cazadoras van más rápido en la cueva
 var limite_vacio: float = 1600.0   # si Lía cae más abajo de esta y, muere (lo ajusta el nivel)
 var todas_asustadas: bool = false  # durante la entrega de luz final
+var entregando_luz: bool = false   # la pantalla se oscurece casi por completo
 var muriendo: bool = false
+var nivel_terminado: bool = false
 
 # Punto de control
 var punto_inicio: Vector2 = Vector2.ZERO
@@ -100,6 +102,33 @@ func luciernagas_liberadas() -> int:
 
 func luciernagas_total() -> int:
 	return estadisticas["luciernagas_total"][nivel_actual]
+
+
+## La llama el constructor de niveles al empezar (o reiniciar) un nivel.
+func iniciar_nivel(nuevo_nivel: Node) -> void:
+	nivel = nuevo_nivel
+	estadisticas["luciernagas_liberadas"][nivel_actual] = 0
+	estadisticas["luciernagas_total"][nivel_actual] = 0
+	if nivel_actual == 1:
+		estadisticas["guardianas"] = 0
+		guardianas_cambiadas.emit(0)
+	zona_actual = ""
+	en_cueva = false
+	todas_asustadas = false
+	entregando_luz = false
+	nivel_terminado = false
+	_cartel_forzado = ""
+	_texto_cartel_mostrado = ""
+
+
+## Lía llegó a la salida del nivel.
+## Por ahora (Fase 5) solo avisa; en las fases 6 y 7 lleva a la historia y al nivel 2.
+func completar_nivel() -> void:
+	if nivel_terminado:
+		return
+	nivel_terminado = true
+	guardar_progreso()
+	toast("Llegaste al final del sendero.")
 
 
 func cambiar_zona(nombre: String) -> void:
