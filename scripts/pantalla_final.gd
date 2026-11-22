@@ -22,6 +22,7 @@ func _ready() -> void:
 		"Luciérnagas liberadas: %d de %d" % [liberadas, total],
 		"Luciérnagas guardianas: %d de 3" % datos["guardianas"],
 		"Veces que la Bruma te alcanzó: %d" % datos["muertes"],
+		"Sombras destruidas: %d" % datos["sombras_destruidas"],
 	])
 	caja.modulate.a = 0.0
 	create_tween().tween_property(caja, "modulate:a", 1.0, 1.0)

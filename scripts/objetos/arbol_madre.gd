@@ -140,4 +140,4 @@ func _terminar_curacion() -> void:
 	for sombra: Node in get_tree().get_nodes_in_group("sombras"):
 		var tween: Tween = sombra.create_tween()
 		tween.tween_property(sombra, "modulate:a", 0.0, 0.8)
-	Juego.completar_juego()
+	Juego.completar_arbol()

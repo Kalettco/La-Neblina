@@ -17,6 +17,10 @@ const RUTA_TILESET: String = "res://assets/tilesets/tileset_neblina.tres"
 const DATOS: Array[GDScript] = [
 	preload("res://scripts/datos/nivel_1_sendero.gd"),
 	preload("res://scripts/datos/nivel_2_bosque.gd"),
+	preload("res://scripts/datos/nivel_3_raices.gd"),
+	preload("res://scripts/datos/nivel_4_descenso.gd"),
+	preload("res://scripts/datos/nivel_5_cavernas.gd"),
+	preload("res://scripts/datos/nivel_6_corazon.gd"),
 ]
 
 const ESCENA_JUGADOR: PackedScene = preload("res://escenas/jugador/jugador.tscn")
@@ -32,6 +36,7 @@ const ESCENA_CARTEL: PackedScene = preload("res://escenas/objetos/cartel.tscn")
 const ESCENA_PELIGRO: PackedScene = preload("res://escenas/objetos/peligro.tscn")
 const ESCENA_SALIDA: PackedScene = preload("res://escenas/objetos/salida.tscn")
 const ESCENA_SOMBRA: PackedScene = preload("res://escenas/enemigos/sombra.tscn")
+const ESCENA_LANZADORA: PackedScene = preload("res://escenas/enemigos/lanzadora.tscn")
 const ESCENA_GUARDIANA: PackedScene = preload("res://escenas/objetos/guardiana.tscn")
 const ESCENA_ARBOL: PackedScene = preload("res://escenas/objetos/arbol_madre.tscn")
 
@@ -56,6 +61,10 @@ const VELOCIDAD_COLOR: float = 6.0     # el color de la noche cambia en ~0,5 s
 const MULTIPLICADOR_GRACIA_COPA: float = 3.0   # plataformas de luz en la copa: 0,5 s x 3
 const EXTRA_ABAJO: float = 240.0       # roca de relleno visible bajo el nivel (deja sitio al cartel)
 
+## Solo para escenas de PRUEBA: si se pone un archivo de datos aquí, se usa ese
+## en vez del nivel actual, y se juega como acto 2 (con disparo).
+@export var datos_prueba: GDScript = null
+
 var ancho: int = 0
 var alto: int = 0
 var datos: GDScript = null
@@ -73,7 +82,12 @@ var _celdas_solidas: Dictionary = {}   # Vector2i -> true
 
 
 func _ready() -> void:
-	datos = DATOS[clampi(Juego.nivel_actual, 0, DATOS.size() - 1)]
+	if datos_prueba != null:
+		datos = datos_prueba
+		Juego.nivel_actual = Juego.NIVEL_CON_DISPARO
+		Juego.tiene_disparo = true
+	else:
+		datos = DATOS[clampi(Juego.nivel_actual, 0, DATOS.size() - 1)]
 	Juego.iniciar_nivel(self)
 	datos.construir(self)
 	_pintar_terreno()
@@ -191,6 +205,11 @@ func guardiana(x: int, y: int) -> void:
 
 func arbol(x: int, y: int) -> void:
 	_colocar(ESCENA_ARBOL.instantiate(), x, y, objetos)
+
+
+## Lanzadora de bruma (acto 2): flota en la casilla (x, y).
+func lanzadora(x: int, y: int) -> void:
+	_colocar(ESCENA_LANZADORA.instantiate(), x, y, enemigos)
 
 
 # =============================================================================

@@ -18,18 +18,18 @@ size = Vector2(2400, 96)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_suelob"]
 size = Vector2(3264, 96)
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_muro"]
-size = Vector2(96, 288)
-
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_foso"]
 size = Vector2(336, 48)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ooo5k"]
 size = Vector2(300, 48)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_muro"]
+size = Vector2(96, 288)
+
 [node name="NivelPrueba" type="Node2D" unique_id=13368945]
 
-[node name="Noche" type="CanvasModulate" parent="."]
+[node name="Noche" type="CanvasModulate" parent="." unique_id=1171583107]
 color = Color(0.101960786, 0.13333334, 0.21960784, 1)
 
 [node name="Suelo" type="StaticBody2D" parent="." unique_id=1576541796]
@@ -45,13 +45,13 @@ offset_bottom = 1048.0
 mouse_filter = 2
 color = Color(0.27058825, 0.49803922, 0.23921569, 1)
 
-[node name="SueloB" type="StaticBody2D" parent="."]
+[node name="SueloB" type="StaticBody2D" parent="." unique_id=991499520]
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="SueloB"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SueloB" unique_id=345962041]
 position = Vector2(4368, 1000)
 shape = SubResource("RectangleShape2D_suelob")
 
-[node name="ColorRect" type="ColorRect" parent="SueloB"]
+[node name="ColorRect" type="ColorRect" parent="SueloB" unique_id=2088137760]
 offset_left = 2736.0
 offset_top = 952.0
 offset_right = 6000.0
@@ -59,13 +59,13 @@ offset_bottom = 1048.0
 mouse_filter = 2
 color = Color(0.27058825, 0.49803922, 0.23921569, 1)
 
-[node name="FondoFoso" type="StaticBody2D" parent="."]
+[node name="FondoFoso" type="StaticBody2D" parent="." unique_id=1819360356]
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="FondoFoso"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="FondoFoso" unique_id=1304508716]
 position = Vector2(2568, 1072)
 shape = SubResource("RectangleShape2D_foso")
 
-[node name="ColorRect" type="ColorRect" parent="FondoFoso"]
+[node name="ColorRect" type="ColorRect" parent="FondoFoso" unique_id=71822629]
 offset_left = 2400.0
 offset_top = 1048.0
 offset_right = 2736.0
@@ -115,32 +115,32 @@ offset_bottom = 727.0
 mouse_filter = 2
 color = Color(0.5607075, 0.22997564, 1.4439226e-07, 1)
 
-[node name="Cartel" parent="." instance=ExtResource("6_cartel")]
+[node name="Cartel" parent="." unique_id=1946248409 instance=ExtResource("6_cartel")]
 position = Vector2(420, 952)
 texto = "Prueba de la Fase 3: toca el frasco, enciende el farol y cruza el foso iluminando las plataformas escondidas."
 
-[node name="Frasco" parent="." instance=ExtResource("3_frasco")]
+[node name="Frasco" parent="." unique_id=2096102334 instance=ExtResource("3_frasco")]
 position = Vector2(1150, 952)
 
-[node name="Farol" parent="." instance=ExtResource("4_farol")]
+[node name="Farol" parent="." unique_id=630201194 instance=ExtResource("4_farol")]
 position = Vector2(2200, 952)
 
-[node name="PlataformaLuz1" parent="." instance=ExtResource("5_plataforma")]
+[node name="PlataformaLuz1" parent="." unique_id=177735092 instance=ExtResource("5_plataforma")]
 position = Vector2(2520, 952)
 
-[node name="PlataformaLuz2" parent="." instance=ExtResource("5_plataforma")]
+[node name="PlataformaLuz2" parent="." unique_id=712786922 instance=ExtResource("5_plataforma")]
 position = Vector2(2568, 952)
 
-[node name="PlataformaLuz3" parent="." instance=ExtResource("5_plataforma")]
+[node name="PlataformaLuz3" parent="." unique_id=109284453 instance=ExtResource("5_plataforma")]
 position = Vector2(2616, 952)
 
-[node name="Muro" type="StaticBody2D" parent="."]
+[node name="Muro" type="StaticBody2D" parent="." unique_id=921567652]
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Muro"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Muro" unique_id=48263246]
 position = Vector2(4298, 808)
 shape = SubResource("RectangleShape2D_muro")
 
-[node name="ColorRect" type="ColorRect" parent="Muro"]
+[node name="ColorRect" type="ColorRect" parent="Muro" unique_id=1479861548]
 offset_left = 4250.0
 offset_top = 664.0
 offset_right = 4346.0
@@ -148,52 +148,52 @@ offset_bottom = 952.0
 mouse_filter = 2
 color = Color(0.22, 0.35, 0.2, 1)
 
-[node name="Agua" parent="." instance=ExtResource("7_peligro")]
+[node name="Agua" parent="." unique_id=873973198 instance=ExtResource("7_peligro")]
 position = Vector2(2400, 1000)
 ancho_casillas = 7
 
-[node name="SombraPatrulla" parent="." instance=ExtResource("11_sombra")]
+[node name="SombraPatrulla" parent="." unique_id=1426482147 instance=ExtResource("11_sombra")]
 position = Vector2(3200, 952)
 limite_izq = 2900.0
 limite_der = 3500.0
 
-[node name="Frasco2" parent="." instance=ExtResource("3_frasco")]
+[node name="Frasco2" parent="." unique_id=177166456 instance=ExtResource("3_frasco")]
 position = Vector2(3350, 952)
 
-[node name="Cartel2" parent="." instance=ExtResource("6_cartel")]
+[node name="Cartel2" parent="." unique_id=1264746977 instance=ExtResource("6_cartel")]
 position = Vector2(3580, 952)
 texto = "Salta las espinas. Después ilumina la flor y camina sobre ella para subir el muro."
 es_nota = true
 
-[node name="Espinas" parent="." instance=ExtResource("7_peligro")]
+[node name="Espinas" parent="." unique_id=1067619949 instance=ExtResource("7_peligro")]
 position = Vector2(3700, 904)
 tipo = "espinas"
 ancho_casillas = 3
 
-[node name="Flor" parent="." instance=ExtResource("8_flor")]
+[node name="Flor" parent="." unique_id=110547621 instance=ExtResource("8_flor")]
 position = Vector2(4150, 952)
 
-[node name="Farol2" parent="." instance=ExtResource("4_farol")]
+[node name="Farol2" parent="." unique_id=1129501468 instance=ExtResource("4_farol")]
 position = Vector2(4500, 952)
 
-[node name="Brasero" parent="." instance=ExtResource("9_brasero")]
+[node name="Brasero" parent="." unique_id=1076774240 instance=ExtResource("9_brasero")]
 position = Vector2(4750, 952)
 
-[node name="Puerta" parent="." instance=ExtResource("10_puerta")]
+[node name="Puerta" parent="." unique_id=271952198 instance=ExtResource("10_puerta")]
 position = Vector2(4950, 664)
 alto_casillas = 6
 
-[node name="SombraCazadora" parent="." instance=ExtResource("11_sombra")]
+[node name="SombraCazadora" parent="." unique_id=1686436595 instance=ExtResource("11_sombra")]
 position = Vector2(5450, 952)
 tipo = "cazadora"
 limite_izq = 5100.0
 limite_der = 5900.0
 
-[node name="Cartel3" parent="." instance=ExtResource("6_cartel")]
+[node name="Cartel3" parent="." unique_id=26327274 instance=ExtResource("6_cartel")]
 position = Vector2(5950, 952)
 texto = "Más allá está el vacío. Si caes, vuelves al último farol."
 
 [node name="Jugador" parent="." unique_id=3176774 instance=ExtResource("1_l0ku4")]
 position = Vector2(200, 900)
 
-[node name="HUD" parent="." instance=ExtResource("2_hud")]
+[node name="HUD" parent="." unique_id=765491246 instance=ExtResource("2_hud")]

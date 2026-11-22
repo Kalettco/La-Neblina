@@ -69,5 +69,40 @@ func sfx_curacion() -> void:
 	pass
 
 
+# --- Acto 2 ---
+
+func sfx_disparo() -> void:
+	pass
+
+
+func sfx_impacto() -> void:
+	pass
+
+
+func sfx_enemigo_muere() -> void:
+	pass
+
+
+func sfx_campo() -> void:
+	pass
+
+
+func sfx_esquirla() -> void:
+	pass
+
+
+func sfx_golem_golpe() -> void:
+	pass
+
+
+func sfx_jefe_ataque() -> void:
+	pass
+
+
+func sfx_jefe_muere() -> void:
+	pass
+
+
+## Nombres usados: "titulo", "jefe".
 func musica(_nombre: String) -> void:
 	pass

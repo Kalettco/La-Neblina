@@ -1,11 +1,14 @@
 extends Area2D
 ## Brasero: si la linterna lo ilumina sin parar, se carga (1 por segundo).
 ## Si deja de iluminarse, la carga baja 0,6 por segundo.
+## Acto 2: cada chispa de luz que lo golpea suma un tercio (se enciende desde lejos).
 ## Al llegar a 1 se enciende y abre todas las puertas de raíces de su grupo.
 ## Origen = centro inferior de la casilla.
 
 const VELOCIDAD_CARGA: float = 1.0
 const VELOCIDAD_DESCARGA: float = 0.6
+const CARGA_POR_CHISPA: float = 0.34
+const PAUSA_DESCARGA_CHISPA: float = 1.5
 const ANCHO_BARRA: float = 48.0
 const COLOR_APAGADO: Color = Color(0.4, 0.4, 0.42)
 const COLOR_ENCENDIDO: Color = Color(1.0, 0.5, 0.15)
@@ -18,6 +21,7 @@ const COLOR_ENCENDIDO: Color = Color(1.0, 0.5, 0.15)
 
 var carga: float = 0.0
 var encendido: bool = false
+var _pausa_descarga: float = 0.0
 
 
 func _ready() -> void:
@@ -33,12 +37,25 @@ func _physics_process(delta: float) -> void:
 		return
 	var jugador: Jugador = Juego.jugador
 	var iluminado: bool = is_instance_valid(jugador) and (
-		jugador.esta_iluminado(global_position + Vector2(0.0, -80.0))
-		or jugador.esta_iluminado(global_position + Vector2(0.0, -48.0)))
+		Juego.esta_iluminado(global_position + Vector2(0.0, -80.0))
+		or Juego.esta_iluminado(global_position + Vector2(0.0, -48.0)))
+	_pausa_descarga = maxf(_pausa_descarga - delta, 0.0)
 	if iluminado:
 		carga = minf(carga + VELOCIDAD_CARGA * delta, 1.0)
-	else:
+	elif _pausa_descarga <= 0.0:
 		carga = maxf(carga - VELOCIDAD_DESCARGA * delta, 0.0)
+	if carga >= 1.0:
+		_encender()
+	_aplicar_aspecto()
+
+
+## Una chispa de luz lo golpeó: carga un tercio de golpe (3 chispas lo encienden).
+## La carga no baja durante un momento, para dar tiempo al siguiente disparo.
+func recibir_chispa() -> void:
+	if encendido:
+		return
+	carga = minf(carga + CARGA_POR_CHISPA, 1.0)
+	_pausa_descarga = PAUSA_DESCARGA_CHISPA
 	if carga >= 1.0:
 		_encender()
 	_aplicar_aspecto()

@@ -1,6 +1,6 @@
 extends CanvasLayer
 ## Menú de pausa (Escape): botones Continuar, Reiniciar nivel, Configuración, Menú principal.
-## También responde a atajos: Enter/Escape continuar · R reiniciar · Q menú.
+## Escape continúa. (Sin atajos R/Q: esas teclas recargan la luz y activan el campo.)
 
 const ESCENA_CONFIGURACION: PackedScene = preload("res://escenas/ui/pantalla_configuracion.tscn")
 
@@ -32,17 +32,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif not Juego.muriendo and not Juego.nivel_terminado:
 			_abrir()
 		get_viewport().set_input_as_handled()
-		return
-	if not visible or not (event is InputEventKey and event.pressed and not event.echo):
-		return
-	match event.keycode:
-		KEY_R:
-			_reiniciar()
-		KEY_Q:
-			_ir_al_menu()
-		_:
-			return
-	get_viewport().set_input_as_handled()
 
 
 func _abrir() -> void:

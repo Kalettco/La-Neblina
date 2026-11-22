@@ -1,0 +1,42 @@
+================================================================================
+  NEBLINA - CRÉDITOS Y REFERENCIAS
+================================================================================
+
+Lista de todo recurso externo usado en el prototipo
+(nombre, autor, licencia, enlace). Agregar una línea por cada recurso nuevo.
+
+--------------------------------------------------------------------------------
+MOTOR
+--------------------------------------------------------------------------------
+- Godot Engine 4.7.2 (estable)
+  Autor: Juan Linietsky, Ariel Manzur y colaboradores de Godot
+  Licencia: MIT
+  Enlace: https://godotengine.org
+
+--------------------------------------------------------------------------------
+CÓDIGO
+--------------------------------------------------------------------------------
+- Todo el código GDScript del prototipo se escribió con ayuda de inteligencia
+  artificial: Claude Code (Anthropic), a partir de la especificación del
+  proyecto (docs/instrucciones_claude_code.txt) y bajo la dirección del autor.
+  Enlace: https://claude.com/claude-code
+
+--------------------------------------------------------------------------------
+ARTE
+--------------------------------------------------------------------------------
+- Por ahora no se usa arte externo: todo son figuras de colores y texturas
+  generadas por código (marcadores provisionales).
+- El arte final lo dibujará el autor (sección 11 de las instrucciones).
+
+--------------------------------------------------------------------------------
+AUDIO
+--------------------------------------------------------------------------------
+- Todavía no hay audio. Cuando se agregue música o efectos, anotar aquí:
+  Nombre del archivo · Autor · Licencia · Enlace
+
+--------------------------------------------------------------------------------
+FUENTES TIPOGRÁFICAS
+--------------------------------------------------------------------------------
+- Fuente por defecto que trae Godot (incluida con el motor).
+  Su nombre y licencia aparecen en Godot: Ayuda > Acerca de Godot >
+  Licencias de terceros. Copiarlos aquí antes de entregar.

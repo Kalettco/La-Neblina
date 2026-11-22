@@ -19,13 +19,28 @@ const RUTA_TITULO: String = "res://escenas/ui/pantalla_titulo.tscn"
 const RUTA_HISTORIA: String = "res://escenas/ui/pantalla_historia.tscn"
 const RUTA_TARJETA: String = "res://escenas/ui/tarjeta_nivel.tscn"
 const RUTA_FINAL: String = "res://escenas/ui/pantalla_final.tscn"
+const RUTA_HABILIDAD: String = "res://escenas/ui/pantalla_habilidad.tscn"
+
+## Niveles: 0 sendero · 1 bosque · 2 raíces · 3 descenso · 4 cavernas · 5 corazón
+const NUM_NIVELES: int = 6
+const NIVEL_CON_DISPARO: int = 2   # desde el nivel 3 se puede disparar
+const NIVEL_CON_CAMPO: int = 4     # desde el nivel 5 se puede usar el campo de luz
 
 # Historia que se está mostrando (la lee pantalla_historia)
 var historia_paginas: Array = []
 var historia_opciones: Dictionary = {}
 var _historia_siguiente: Callable = Callable()
 
-var nivel_actual: int = 0          # 0 = tutorial, 1 = bosque
+# Pantalla de habilidad nueva (la lee pantalla_habilidad)
+var habilidad_titulo: String = ""
+var habilidad_texto: String = ""
+var _habilidad_siguiente: Callable = Callable()
+
+# Habilidades del acto 2
+var tiene_disparo: bool = false
+var tiene_campo: bool = false
+
+var nivel_actual: int = 0          # índice del nivel (ver NUM_NIVELES)
 var estadisticas: Dictionary = {}
 var jugador: Jugador = null
 var nivel: Node = null
@@ -70,9 +85,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	# F11: alterna pantalla completa / ventana (y lo guarda en la configuración)
 	if event.keycode == KEY_F11:
 		Configuracion.alternar_pantalla_completa()
-	# F9 (solo durante el desarrollo): saltar al nivel 2 para probarlo
+	# F9 (solo durante el desarrollo): saltar al nivel siguiente para probarlo
 	elif event.keycode == KEY_F9 and OS.is_debug_build():
-		ir_a_nivel(1)
+		ir_a_nivel(mini(nivel_actual + 1, NUM_NIVELES - 1))
 
 
 # --- Partida y estadísticas ---
@@ -84,14 +99,48 @@ func nueva_partida() -> void:
 	mostrar_historia(Textos.INTRO, mostrar_tarjeta.bind(0))
 
 
-## Título (C) -> tarjeta del nivel 2.
-func continuar_partida() -> void:
+## Título (Continuar) -> tarjeta del nivel elegido, con sus habilidades.
+func continuar_partida(indice: int) -> void:
 	_reiniciar_estadisticas()
-	mostrar_tarjeta(1)
+	mostrar_tarjeta(clampi(indice, 0, cargar_progreso()))
 
 
+## true si ya se jugó alguna vez (hay archivo de progreso).
 func hay_partida_guardada() -> bool:
-	return cargar_progreso() >= 1
+	return FileAccess.file_exists(RUTA_PROGRESO)
+
+
+## Nombre de un nivel ("Nivel 3 · Las raíces profundas"), leído de su archivo de datos.
+func nombre_nivel(indice: int) -> String:
+	var datos: GDScript = Nivel.DATOS[clampi(indice, 0, Nivel.DATOS.size() - 1)]
+	return String(datos.get_script_constant_map().get("NOMBRE", "Nivel %d" % (indice + 1)))
+
+
+## Habilidades según el nivel: se ganan en orden, así que dependen del índice.
+func _ajustar_habilidades(indice: int) -> void:
+	tiene_disparo = indice >= NIVEL_CON_DISPARO
+	tiene_campo = indice >= NIVEL_CON_CAMPO
+
+
+func registrar_sombra_destruida() -> void:
+	estadisticas["sombras_destruidas"] += 1
+
+
+## Acto 2 (desde el nivel 3): los enemigos atacan y se pueden destruir.
+func es_acto_2() -> bool:
+	return nivel_actual >= NIVEL_CON_DISPARO
+
+
+## ¿Hay luz en este punto? Cuenta la linterna de Lía y cualquier luz extra
+## (chispas en vuelo; en la Fase 11 también el campo de luz).
+## Las luces extra están en el grupo "luces_extra" y tienen ilumina(punto) -> bool.
+func esta_iluminado(punto: Vector2) -> bool:
+	if is_instance_valid(jugador) and jugador.esta_iluminado(punto):
+		return true
+	for luz: Node in get_tree().get_nodes_in_group("luces_extra"):
+		if luz.call("ilumina", punto):
+			return true
+	return false
 
 
 # --- Flujo de pantallas ---
@@ -117,6 +166,19 @@ func mostrar_tarjeta(indice: int) -> void:
 	_cambiar_escena(RUTA_TARJETA)
 
 
+## Pantalla "NUEVA HABILIDAD"; Enter/clic llama a "siguiente".
+func mostrar_habilidad(titulo: String, texto: String, siguiente: Callable) -> void:
+	habilidad_titulo = titulo
+	habilidad_texto = texto
+	_habilidad_siguiente = siguiente
+	_cambiar_escena(RUTA_HABILIDAD)
+
+
+func terminar_habilidad() -> void:
+	if _habilidad_siguiente.is_valid():
+		_habilidad_siguiente.call()
+
+
 func ir_al_menu() -> void:
 	_cambiar_escena(RUTA_TITULO)
 
@@ -128,12 +190,13 @@ func mostrar_pantalla_final() -> void:
 func _cambiar_escena(ruta: String) -> void:
 	jugador = null
 	muriendo = false
-	get_tree().paused = false
-	get_tree().change_scene_to_file(ruta)
+	Transicion.cambiar_escena(ruta)   # fundido a negro
 
 
 ## true si el evento es "Enter o clic" (para avanzar pantallas).
 func es_avanzar(event: InputEvent) -> bool:
+	if Transicion.ocupado():
+		return false   # durante un fundido no se avanza (evita saltarse pantallas)
 	if event is InputEventMouseButton:
 		return event.pressed and event.button_index == MOUSE_BUTTON_LEFT
 	if event is InputEventKey:
@@ -151,10 +214,18 @@ func _reiniciar_estadisticas() -> void:
 	estadisticas = {
 		"tiempo_juego": 0.0,
 		"muertes": 0,
-		"luciernagas_liberadas": [0, 0],
-		"luciernagas_total": [0, 0],
+		"luciernagas_liberadas": _lista_ceros(),
+		"luciernagas_total": _lista_ceros(),
 		"guardianas": 0,
+		"sombras_destruidas": 0,
 	}
+
+
+func _lista_ceros() -> Array:
+	var lista: Array = []
+	lista.resize(NUM_NIVELES)
+	lista.fill(0)
+	return lista
 
 
 ## Lo llama cada frasco al aparecer, para saber cuántos hay en el nivel.
@@ -206,14 +277,15 @@ func iniciar_nivel(nuevo_nivel: Node) -> void:
 	_texto_cartel_mostrado = ""
 
 
-## Carga el nivel i (0 = tutorial, 1 = bosque) con el constructor de niveles.
+## Carga el nivel i (ver NUM_NIVELES) con el constructor de niveles.
 func ir_a_nivel(indice: int) -> void:
 	nivel_actual = indice
+	_ajustar_habilidades(indice)
 	guardar_progreso()
 	_cambiar_escena(RUTA_ESCENA_NIVEL)
 
 
-## Lía llegó a la salida del tutorial: historia PUENTE -> tarjeta del nivel 2.
+## Lía llegó a la salida de un nivel: lo que sigue depende del nivel.
 func completar_nivel() -> void:
 	if nivel_terminado:
 		return
@@ -222,9 +294,23 @@ func completar_nivel() -> void:
 	if is_instance_valid(jugador):
 		jugador.bloqueado = true
 		jugador.invulnerable = 99.0
-	toast("Llegaste al final del sendero.")
+	toast("Llegaste al final del sendero." if nivel_actual == 0 else "Llegaste a la salida.")
 	await get_tree().create_timer(1.5).timeout
-	mostrar_historia(Textos.PUENTE, mostrar_tarjeta.bind(nivel_actual + 1))
+	var siguiente: int = nivel_actual + 1
+	# Se guarda ya el nivel siguiente, por si el jugador cierra durante la historia
+	_guardar_nivel_alcanzado(siguiente)
+	match nivel_actual:
+		0:   # sendero -> historia PUENTE -> bosque
+			mostrar_historia(Textos.PUENTE, mostrar_tarjeta.bind(siguiente))
+		3:   # descenso -> Luciérnaga Reina -> campo de luz -> cavernas
+			mostrar_historia(Textos.REINA, mostrar_habilidad.bind(
+				Textos.HABILIDAD_CAMPO_TITULO, Textos.HABILIDAD_CAMPO_TEXTO, mostrar_tarjeta.bind(siguiente)))
+		4:   # cavernas -> "Antes del corazón" -> corazón
+			mostrar_historia(Textos.ANTES_CORAZON, mostrar_tarjeta.bind(siguiente))
+		5:   # corazón (jefe) -> final del juego
+			completar_juego()
+		_:   # sin historia entre niveles
+			mostrar_tarjeta(siguiente)
 
 
 func rescatar_guardiana() -> void:
@@ -236,12 +322,21 @@ func guardianas() -> int:
 	return estadisticas["guardianas"]
 
 
-## El Árbol Madre sanó: historia FINAL -> pantalla final con estadísticas.
-func completar_juego() -> void:
+## El Árbol Madre sanó (fin del nivel 2): "El árbol habla" -> disparo de luz -> nivel 3.
+func completar_arbol() -> void:
 	if nivel_terminado:
 		return
 	nivel_terminado = true
+	_guardar_nivel_alcanzado(NIVEL_CON_DISPARO)
 	await get_tree().create_timer(1.0).timeout
+	mostrar_historia(Textos.ARBOL_HABLA, mostrar_habilidad.bind(
+		Textos.HABILIDAD_DISPARO_TITULO, Textos.HABILIDAD_DISPARO_TEXTO,
+		mostrar_tarjeta.bind(NIVEL_CON_DISPARO)), Textos.OPCIONES_ARBOL_HABLA)
+
+
+## Fin del juego (alma de Andrés): historia FINAL -> pantalla final con estadísticas.
+func completar_juego() -> void:
+	nivel_terminado = true
 	mostrar_historia(Textos.FINAL, mostrar_pantalla_final, Textos.OPCIONES_FINAL)
 
 
@@ -302,8 +397,11 @@ func morir(mensaje: String) -> void:
 func reaparecer() -> void:
 	if is_instance_valid(jugador):
 		jugador.reaparecer(obtener_punto_reaparicion())
-	for sombra: Node in get_tree().get_nodes_in_group("sombras"):
-		sombra.call("reiniciar")
+	for enemigo: Node in get_tree().get_nodes_in_group("enemigos"):
+		enemigo.call("reiniciar")
+	# Los proyectiles enemigos en vuelo desaparecen
+	for proyectil: Node in get_tree().get_nodes_in_group("proyectiles_enemigos"):
+		proyectil.queue_free()
 	# Los frascos agarrados después del último farol vuelven a aparecer
 	for frasco: Node in get_tree().get_nodes_in_group("frascos"):
 		frasco.call("restaurar")
@@ -351,17 +449,25 @@ func _actualizar_cartel() -> void:
 
 # --- Guardado ---
 
+## Guarda el nivel actual como alcanzado (y las habilidades).
 func guardar_progreso() -> void:
+	_guardar_nivel_alcanzado(nivel_actual)
+
+
+## Guarda el nivel más alto alcanzado y las habilidades que corresponden.
+func _guardar_nivel_alcanzado(indice: int) -> void:
 	var archivo: ConfigFile = ConfigFile.new()
 	archivo.load(RUTA_PROGRESO)   # si no existe, se crea nuevo
-	var maximo: int = maxi(int(archivo.get_value("progreso", "nivel_maximo", 0)), nivel_actual)
+	var maximo: int = clampi(maxi(int(archivo.get_value("progreso", "nivel_maximo", 0)), indice), 0, NUM_NIVELES - 1)
 	archivo.set_value("progreso", "nivel_maximo", maximo)
+	archivo.set_value("progreso", "tiene_disparo", maximo >= NIVEL_CON_DISPARO)
+	archivo.set_value("progreso", "tiene_campo", maximo >= NIVEL_CON_CAMPO)
 	archivo.save(RUTA_PROGRESO)
 
 
-## Devuelve el nivel más alto alcanzado (0 si nunca se jugó).
+## Devuelve el índice del nivel más alto alcanzado (0 si nunca se jugó).
 func cargar_progreso() -> int:
 	var archivo: ConfigFile = ConfigFile.new()
 	if archivo.load(RUTA_PROGRESO) != OK:
 		return 0
-	return int(archivo.get_value("progreso", "nivel_maximo", 0))
+	return clampi(int(archivo.get_value("progreso", "nivel_maximo", 0)), 0, NUM_NIVELES - 1)

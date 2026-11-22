@@ -23,6 +23,15 @@ extends CharacterBody2D
 @export var color_luz: Color = Color(1.0, 0.86, 0.55)
 @export var radio_pies: float = 60.0          # la linterna también ilumina alrededor (plataforma bajo los pies)
 
+# --- Disparo de luz (acto 2, clic derecho) ---
+@export var costo_disparo: float = 6.0
+@export var cadencia: float = 0.30            # segundos entre disparos
+@export var velocidad_chispa: float = 1100.0  # px/s
+@export var alcance_chispa: float = 900.0     # px
+@export var dano_chispa: int = 1
+
+const ESCENA_CHISPA: PackedScene = preload("res://escenas/objetos/chispa.tscn")
+
 const ENERGIA_BAJA: float = 25.0
 const ENERGIA_AL_REAPARECER: float = 70.0
 const TAMANO_TEXTURA_CONO: int = 512
@@ -49,6 +58,8 @@ var _sin_control: float = 0.0
 var _sacudida: float = 0.0
 var _sacudida_duracion: float = 0.0
 var _sacudida_fuerza: float = 0.0
+var _espera_disparo: float = 0.0
+var _tiempo_disparando: float = 0.0     # para la animación lia_disparar
 
 # --- Animación (para cuando llegue el arte) ---
 var _estaba_en_suelo: bool = true
@@ -88,6 +99,7 @@ func _physics_process(delta: float) -> void:
 	if is_on_floor():
 		impulsado = false
 	_procesar_linterna(delta)
+	_procesar_disparo(delta)
 	_actualizar_visual()
 	_actualizar_aura()
 	_avisar_energia()
@@ -143,6 +155,36 @@ func _procesar_movimiento(delta: float) -> void:
 
 
 # --- Linterna ---
+
+## Clic derecho: lanza una chispa de luz hacia el mouse (solo con Juego.tiene_disparo).
+## Gasta luz; no se puede con menos de costo_disparo ni durante la entrega de luz.
+func _procesar_disparo(delta: float) -> void:
+	_espera_disparo = maxf(_espera_disparo - delta, 0.0)
+	_tiempo_disparando = maxf(_tiempo_disparando - delta, 0.0)
+	if not Juego.tiene_disparo or entregando_luz or bloqueado:
+		return
+	if not Input.is_action_just_pressed("disparar") or _espera_disparo > 0.0:
+		return
+	if energia < costo_disparo:
+		Juego.toast("No te queda luz suficiente para disparar.")
+		return
+	energia -= costo_disparo
+	_espera_disparo = cadencia
+	_tiempo_disparando = 0.2
+	var raton: Vector2 = get_global_mouse_position()
+	if absf(raton.x - global_position.x) > 1.0:
+		mirando = 1 if raton.x > global_position.x else -1
+	_colocar_punto_linterna()
+	var origen: Vector2 = punto_linterna.global_position
+	var chispa: Node2D = ESCENA_CHISPA.instantiate()
+	chispa.position = origen
+	chispa.set("direccion", (raton - origen).normalized())
+	chispa.set("velocidad", velocidad_chispa)
+	chispa.set("alcance", alcance_chispa)
+	chispa.set("dano", dano_chispa)
+	get_parent().add_child(chispa)
+	Audio.sfx_disparo()
+
 
 func _procesar_linterna(delta: float) -> void:
 	linterna_encendida = Input.is_action_pressed("linterna") and energia > 0.0 and not entregando_luz
@@ -217,6 +259,8 @@ func recibir_dano(cantidad: float, desde_x: float) -> void:
 	recibiendo_dano = true
 	_sin_control = TIEMPO_SIN_CONTROL
 	Audio.sfx_dano()
+	sacudir(9.0, 0.3)
+	Efectos.estallido(get_parent(), global_position + Vector2(0.0, -42.0), Color(0.45, 0.25, 0.6), 16)
 	if energia <= 0.0:
 		morir("La Bruma te alcanzó.")
 	else:
@@ -278,8 +322,18 @@ func _actualizar_aura() -> void:
 	# Más débil con poca luz: de 0.35 (vacía) a 0.9 (llena)
 	var proporcion: float = energia / energia_maxima
 	var brillo: float = lerpf(0.35, 0.9, proporcion)
+	var linterna_marcador: CanvasItem = get_node_or_null("Visual/Linterna") as CanvasItem
 	if energia < ENERGIA_BAJA:
 		brillo *= 0.8 + 0.2 * sin(_tiempo * 6.0)   # parpadeo suave
+		# La linterna también parpadea, a tirones, como si se estuviera apagando
+		var tiron: float = 0.35 if sin(_tiempo * 17.0) > 0.85 else 1.0
+		if linterna_marcador != null:
+			linterna_marcador.modulate = Color(1.0, 1.0, 1.0, tiron * (0.6 + 0.4 * sin(_tiempo * 6.0)))
+		cono.energy = 1.2 * tiron
+	else:
+		if linterna_marcador != null:
+			linterna_marcador.modulate = Color.WHITE
+		cono.energy = 1.2
 	aura.energy = brillo
 
 
@@ -346,6 +400,8 @@ func _elegir_animacion(en_suelo: bool) -> String:
 		return "lia_entregar"
 	if recibiendo_dano:
 		return "lia_dano"
+	if _tiempo_disparando > 0.0:
+		return "lia_disparar"
 	if not en_suelo:
 		return "lia_saltar" if velocity.y < 0.0 else "lia_caer"
 	if _tiempo_aterrizar > 0.0:

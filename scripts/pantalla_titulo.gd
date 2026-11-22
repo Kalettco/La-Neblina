@@ -1,11 +1,12 @@
 extends Control
 ## Pantalla de título: bosque oscuro con luciérnagas flotando.
-## Menú: Nuevo juego · Continuar (nivel 2, si ya se llegó) · Configuración · Salir.
+## Menú: Nuevo juego · Continuar (elegir nivel desbloqueado) · Configuración · Salir.
 ## Funciona con el mouse y con el teclado (flechas + Enter).
 
 const ANCHO: float = 1920.0
 const ALTO: float = 1080.0
 const ESCENA_CONFIGURACION: PackedScene = preload("res://escenas/ui/pantalla_configuracion.tscn")
+const ESCENA_SELECTOR: PackedScene = preload("res://escenas/ui/selector_nivel.tscn")
 
 @onready var bosque: Control = $Bosque
 @onready var boton_nuevo: Button = $Menu/Caja/Botones/Nuevo
@@ -30,9 +31,11 @@ func _al_nuevo() -> void:
 	Juego.nueva_partida()
 
 
+## Abre la lista de niveles desbloqueados.
 func _al_continuar() -> void:
-	_bloquear_botones()
-	Juego.continuar_partida()
+	var selector: Node = ESCENA_SELECTOR.instantiate()
+	selector.cerrado.connect(boton_continuar.grab_focus)
+	add_child(selector)
 
 
 func _al_configurar() -> void:

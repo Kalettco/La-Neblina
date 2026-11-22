@@ -43,7 +43,7 @@ func _esta_iluminada() -> bool:
 	if not is_instance_valid(jugador):
 		return false
 	for x: float in [-20.0, 0.0, 20.0]:
-		if jugador.esta_iluminado(to_global(Vector2(x, CENTRO_Y))):
+		if Juego.esta_iluminado(to_global(Vector2(x, CENTRO_Y))):
 			return true
 	return false
 

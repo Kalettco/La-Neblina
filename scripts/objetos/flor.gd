@@ -28,7 +28,7 @@ func _physics_process(delta: float) -> void:
 	var jugador: Jugador = Juego.jugador
 	if not is_instance_valid(jugador):
 		return
-	if jugador.esta_iluminado(global_position + Vector2(0.0, -24.0)):
+	if Juego.esta_iluminado(global_position + Vector2(0.0, -24.0)):
 		_abierta = TIEMPO_ABIERTA
 	else:
 		_abierta = maxf(_abierta - delta, 0.0)

@@ -77,6 +77,9 @@ func guardar() -> void:
 func cargar() -> void:
 	var archivo: ConfigFile = ConfigFile.new()
 	if archivo.load(RUTA) != OK:
+		# Primera vez: el juego EXPORTADO arranca en pantalla completa;
+		# al probar desde el editor (F5) arranca en ventana.
+		pantalla_completa = not OS.is_debug_build()
 		return
 	pantalla_completa = bool(archivo.get_value("pantalla", "completa", false))
 	tamano = clampi(int(archivo.get_value("pantalla", "tamano", 0)), 0, TAMANOS.size() - 1)

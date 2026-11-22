@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://escenas/niveles/nivel.tscn" id="1_nivel"]
+[ext_resource type="Script" path="res://scripts/datos/nivel_prueba_acto2.gd" id="2_datos"]
+
+[node name="NivelPruebaActo2" instance=ExtResource("1_nivel")]
+datos_prueba = ExtResource("2_datos")
