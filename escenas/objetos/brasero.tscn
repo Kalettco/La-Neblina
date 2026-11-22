@@ -1,0 +1,54 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/objetos/brasero.gd" id="1_brasero"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_brasero"]
+size = Vector2(48, 96)
+
+[node name="Brasero" type="Area2D"]
+collision_layer = 32
+collision_mask = 0
+monitoring = false
+script = ExtResource("1_brasero")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -48)
+shape = SubResource("RectangleShape2D_brasero")
+
+[node name="Visual" type="Node2D" parent="."]
+
+[node name="Pie" type="ColorRect" parent="Visual"]
+offset_left = -8.0
+offset_top = -64.0
+offset_right = 8.0
+mouse_filter = 2
+color = Color(0.32, 0.32, 0.34, 1)
+
+[node name="BasePie" type="ColorRect" parent="Visual"]
+offset_left = -16.0
+offset_top = -8.0
+offset_right = 16.0
+mouse_filter = 2
+color = Color(0.32, 0.32, 0.34, 1)
+
+[node name="Cuenco" type="ColorRect" parent="Visual"]
+offset_left = -24.0
+offset_top = -88.0
+offset_right = 24.0
+offset_bottom = -64.0
+mouse_filter = 2
+color = Color(0.4, 0.4, 0.42, 1)
+
+[node name="Barra" type="ColorRect" parent="Visual"]
+visible = false
+offset_left = -24.0
+offset_top = -108.0
+offset_right = 24.0
+offset_bottom = -100.0
+mouse_filter = 2
+color = Color(1, 0.55, 0.15, 1)
+
+[node name="Luz" type="PointLight2D" parent="."]
+position = Vector2(0, -88)
+enabled = false
+color = Color(1, 0.6, 0.25, 1)

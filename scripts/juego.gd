@@ -12,12 +12,18 @@ signal cartel_cambiado(texto: String, es_nota: bool)   # texto vacío = ocultar
 const RUTA_PROGRESO: String = "user://progreso.cfg"
 const DISTANCIA_CARTEL_X: float = 2.5 * 48.0
 const DISTANCIA_CARTEL_Y: float = 3.0 * 48.0
+const DURACION_MUERTE: float = 1.5
+const ESCENA_MUERTE: PackedScene = preload("res://escenas/ui/pantalla_muerte.tscn")
 
 var nivel_actual: int = 0          # 0 = tutorial, 1 = bosque
 var estadisticas: Dictionary = {}
 var jugador: Jugador = null
 var nivel: Node = null
 var zona_actual: String = ""
+var en_cueva: bool = false         # las cazadoras van más rápido en la cueva
+var limite_vacio: float = 1600.0   # si Lía cae más abajo de esta y, muere (lo ajusta el nivel)
+var todas_asustadas: bool = false  # durante la entrega de luz final
+var muriendo: bool = false
 
 # Punto de control
 var punto_inicio: Vector2 = Vector2.ZERO
@@ -110,6 +116,8 @@ func registrar_jugador(nuevo_jugador: Jugador) -> void:
 	punto_inicio = nuevo_jugador.global_position
 	hay_punto_control = false
 	farol_activo = null
+	muriendo = false
+	todas_asustadas = false
 
 
 func activar_farol(farol: Farol) -> void:
@@ -126,17 +134,34 @@ func obtener_punto_reaparicion() -> Vector2:
 	return punto_control if hay_punto_control else punto_inicio
 
 
-## Muerte provisional: la pantalla de muerte llega en la Fase 4.
+## Lía se desmaya, la pantalla se oscurece con el mensaje y vuelve al último farol.
 func morir(mensaje: String) -> void:
+	if muriendo or not is_instance_valid(jugador):
+		return
+	muriendo = true
 	estadisticas["muertes"] += 1
+	jugador.desmayar()
 	Audio.sfx_muerte()
-	toast(mensaje)
+	var pantalla: PantallaMuerte = ESCENA_MUERTE.instantiate()
+	get_tree().root.add_child(pantalla)
+	pantalla.mostrar(mensaje)
+	await get_tree().create_timer(DURACION_MUERTE).timeout
 	reaparecer()
+	if is_instance_valid(pantalla):
+		pantalla.ocultar()
+	muriendo = false
 
 
 func reaparecer() -> void:
 	if is_instance_valid(jugador):
 		jugador.reaparecer(obtener_punto_reaparicion())
+	for sombra: Node in get_tree().get_nodes_in_group("sombras"):
+		sombra.call("reiniciar")
+
+
+func sacudir_camara(fuerza: float, duracion: float) -> void:
+	if is_instance_valid(jugador):
+		jugador.sacudir(fuerza, duracion)
 
 
 # --- Mensajes en pantalla ---

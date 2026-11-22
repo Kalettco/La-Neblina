@@ -1,0 +1,11 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/objetos/puerta_raices.gd" id="1_puerta"]
+
+[node name="PuertaRaices" type="StaticBody2D"]
+collision_mask = 0
+script = ExtResource("1_puerta")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+
+[node name="Visual" type="Node2D" parent="."]

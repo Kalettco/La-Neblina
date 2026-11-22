@@ -26,6 +26,10 @@ extends CharacterBody2D
 const ENERGIA_BAJA: float = 25.0
 const ENERGIA_AL_REAPARECER: float = 70.0
 const TAMANO_TEXTURA_CONO: int = 512
+const TIEMPO_INVULNERABLE: float = 1.2
+const EMPUJON: Vector2 = Vector2(330.0, -420.0)
+const TIEMPO_SIN_CONTROL: float = 0.25   # tras un empujón, el jugador no frena el golpe
+const MIRAR_ADELANTE: float = 90.0       # la cámara mira hacia donde va Lía
 
 var mirando: int = 1    # 1 = derecha, -1 = izquierda
 var _coyote: float = 0.0
@@ -36,6 +40,14 @@ var linterna_encendida: bool = false
 var angulo_cono: float = 0.0            # ángulo global del cono (radianes)
 var _tiempo: float = 0.0                # reloj para el parpadeo del aura
 var _energia_avisada: float = -1.0      # último valor enviado al HUD
+
+# --- Daño, impulso y cámara ---
+var invulnerable: float = 0.0           # segundos que quedan sin poder recibir daño
+var impulsado: bool = false             # rebote de flor: no se corta al soltar el salto
+var _sin_control: float = 0.0
+var _sacudida: float = 0.0
+var _sacudida_duracion: float = 0.0
+var _sacudida_fuerza: float = 0.0
 
 # --- Animación (para cuando llegue el arte) ---
 var _estaba_en_suelo: bool = true
@@ -48,6 +60,7 @@ var entregando_luz: bool = false
 @onready var punto_linterna: Marker2D = $PuntoLinterna
 @onready var cono: PointLight2D = $PuntoLinterna/Cono
 @onready var aura: PointLight2D = $Aura
+@onready var camara: Camera2D = $Camera2D
 
 
 func _ready() -> void:
@@ -59,15 +72,31 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	_tiempo += delta
+	if muerto:
+		_actualizar_aura()
+		_actualizar_animacion(delta)
+		return
+	invulnerable = maxf(invulnerable - delta, 0.0)
+	_sin_control = maxf(_sin_control - delta, 0.0)
+	if _sin_control <= 0.0:
+		recibiendo_dano = false
 	_aplicar_gravedad(delta)
 	_procesar_salto(delta)
 	_procesar_movimiento(delta)
 	move_and_slide()
+	if is_on_floor():
+		impulsado = false
 	_procesar_linterna(delta)
 	_actualizar_visual()
 	_actualizar_aura()
 	_avisar_energia()
 	_actualizar_animacion(delta)
+	if global_position.y > Juego.limite_vacio:
+		morir("Caíste al vacío.")
+
+
+func _process(delta: float) -> void:
+	_actualizar_camara(delta)
 
 
 func _aplicar_gravedad(delta: float) -> void:
@@ -92,13 +121,18 @@ func _procesar_salto(delta: float) -> void:
 		velocity.y = -fuerza_salto
 		_buffer = 0.0
 		_coyote = 0.0
+		impulsado = false
+		Audio.sfx_salto()
 
 	# Salto variable: si sueltas el botón antes, salta más bajo
-	if Input.is_action_just_released("saltar") and velocity.y < 0.0:
+	# (no aplica al rebote de una flor)
+	if Input.is_action_just_released("saltar") and velocity.y < 0.0 and not impulsado:
 		velocity.y *= 0.5
 
 
 func _procesar_movimiento(delta: float) -> void:
+	if _sin_control > 0.0:
+		return
 	var direccion: float = Input.get_axis("mover_izquierda", "mover_derecha")
 	if direccion != 0.0:
 		velocity.x = move_toward(velocity.x, direccion * velocidad, aceleracion * delta)
@@ -110,7 +144,7 @@ func _procesar_movimiento(delta: float) -> void:
 # --- Linterna ---
 
 func _procesar_linterna(delta: float) -> void:
-	linterna_encendida = Input.is_action_pressed("linterna") and energia > 0.0
+	linterna_encendida = Input.is_action_pressed("linterna") and energia > 0.0 and not entregando_luz
 	if linterna_encendida:
 		var raton: Vector2 = get_global_mouse_position()
 		# Mientras la linterna está encendida, Lía mira hacia el mouse
@@ -146,6 +180,15 @@ func morir(mensaje: String) -> void:
 	Juego.morir(mensaje)
 
 
+## La llama Juego al morir: se detiene la física y se apaga la linterna.
+func desmayar() -> void:
+	muerto = true
+	velocity = Vector2.ZERO
+	linterna_encendida = false
+	cono.enabled = false
+	visual.modulate.a = 1.0
+
+
 ## La llama Juego: vuelve al último farol (o al inicio).
 func reaparecer(posicion: Vector2) -> void:
 	global_position = posicion
@@ -153,6 +196,43 @@ func reaparecer(posicion: Vector2) -> void:
 	energia = clampf(maxf(ENERGIA_AL_REAPARECER, energia), 0.0, energia_maxima)
 	linterna_encendida = false
 	cono.enabled = false
+	muerto = false
+	impulsado = false
+	recibiendo_dano = false
+	_sin_control = 0.0
+	invulnerable = TIEMPO_INVULNERABLE
+	camara.reset_smoothing()
+
+
+## Golpe de una sombra: pierde luz, sale empujada y queda invulnerable un rato.
+func recibir_dano(cantidad: float, desde_x: float) -> void:
+	if muerto or invulnerable > 0.0:
+		return
+	energia = maxf(energia - cantidad, 0.0)
+	invulnerable = TIEMPO_INVULNERABLE
+	var lado: float = 1.0 if global_position.x >= desde_x else -1.0
+	velocity = Vector2(EMPUJON.x * lado, EMPUJON.y)
+	impulsado = false
+	recibiendo_dano = true
+	_sin_control = TIEMPO_SIN_CONTROL
+	Audio.sfx_dano()
+	if energia <= 0.0:
+		morir("La Bruma te alcanzó.")
+	else:
+		Juego.toast("Una sombra te tocó: perdiste luz.")
+
+
+## Rebote de flor trampolín: el impulso no se corta al soltar el salto.
+func impulsar(velocidad_vertical: float) -> void:
+	velocity.y = velocidad_vertical
+	impulsado = true
+	_coyote = 0.0
+
+
+func sacudir(fuerza: float, duracion: float) -> void:
+	_sacudida_fuerza = fuerza
+	_sacudida_duracion = duracion
+	_sacudida = duracion
 
 
 ## Suma luz (frascos, guardianas). Nunca pasa del máximo.
@@ -175,6 +255,22 @@ func _colocar_punto_linterna() -> void:
 func _actualizar_visual() -> void:
 	visual.scale.x = mirando
 	_colocar_punto_linterna()
+	# Parpadeo mientras es invulnerable
+	if invulnerable > 0.0:
+		visual.modulate.a = 0.35 if fmod(invulnerable, 0.16) < 0.08 else 1.0
+	else:
+		visual.modulate.a = 1.0
+
+
+func _actualizar_camara(delta: float) -> void:
+	# Mira 90 px hacia adelante y aplica la sacudida
+	camara.position.x = move_toward(camara.position.x, MIRAR_ADELANTE * mirando, 300.0 * delta)
+	if _sacudida > 0.0:
+		_sacudida = maxf(_sacudida - delta, 0.0)
+		var fuerza: float = _sacudida_fuerza * (_sacudida / _sacudida_duracion)
+		camara.offset = Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * fuerza
+	else:
+		camara.offset = Vector2.ZERO
 
 
 func _actualizar_aura() -> void:
