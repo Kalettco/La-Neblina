@@ -61,6 +61,7 @@ const COLORES_OSCURIDAD: Dictionary = {
 	0.80: Color("1a2238"),   # bosque de noche
 	0.85: Color("151b2e"),
 	0.88: Color("100f16"),   # cueva
+	0.95: Color("0a0a12"),   # oscuridad máxima (cavernas de cristal)
 }
 const COLOR_ENTREGA: Color = Color("050508")
 const COLOR_CURACION: Color = Color("7d8aa6")   # la oscuridad se aclara al sanar el árbol
