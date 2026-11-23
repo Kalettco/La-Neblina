@@ -17,6 +17,7 @@ shape = SubResource("RectangleShape2D_fabxv")
 [node name="Visual" type="Node2D" parent="." unique_id=1142746460]
 
 [node name="Cuerpo" type="ColorRect" parent="Visual" unique_id=700984668]
+visible = false
 offset_left = -18.0
 offset_top = -84.0
 offset_right = 18.0
@@ -24,12 +25,17 @@ mouse_filter = 2
 color = Color(0.8901961, 0, 0, 1)
 
 [node name="Linterna" type="ColorRect" parent="Visual" unique_id=707732820]
+visible = false
 offset_left = 18.0
 offset_top = -56.0
 offset_right = 30.0
 offset_bottom = -40.0
 mouse_filter = 2
 color = Color(1, 1, 0.19607843, 1)
+
+[node name="Sprite" type="AnimatedSprite2D" parent="Visual"]
+centered = false
+offset = Vector2(-36, -96)
 
 [node name="PuntoLinterna" type="Marker2D" parent="." unique_id=320624374]
 position = Vector2(24, -48)

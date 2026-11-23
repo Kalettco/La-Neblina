@@ -1,0 +1,18 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/enemigos/golem.gd" id="1_golem"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_golem"]
+size = Vector2(120, 180)
+
+[node name="Golem" type="Area2D"]
+collision_layer = 4
+collision_mask = 2
+script = ExtResource("1_golem")
+vida_maxima = 10
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -90)
+shape = SubResource("RectangleShape2D_golem")
+
+[node name="Visual" type="Node2D" parent="."]

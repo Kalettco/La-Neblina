@@ -15,6 +15,11 @@ const ENERGIA_BAJA: float = 25.0
 @onready var etiqueta_toast: Label = $Toast
 @onready var cartel: PanelContainer = $Cartel
 @onready var texto_cartel: Label = $Cartel/Texto
+@onready var barra_jefe: ProgressBar = $BarraJefe
+@onready var nombre_jefe: Label = $NombreJefe
+
+const COLOR_JEFE: Color = Color(0.7, 0.3, 0.9)
+var _tween_jefe: Tween = null
 
 var _tween_toast: Tween = null
 var _estilo_cartel: StyleBoxFlat = null
@@ -33,6 +38,7 @@ func _ready() -> void:
 	Juego.zona_cambiada.connect(_al_cambiar_zona)
 	Juego.toast_pedido.connect(_al_pedir_toast)
 	Juego.cartel_cambiado.connect(_al_cambiar_cartel)
+	Juego.jefe_cambiado.connect(_al_cambiar_jefe)
 
 	# Valores iniciales
 	_al_cambiar_luciernagas(Juego.luciernagas_liberadas(), Juego.luciernagas_total())
@@ -44,6 +50,25 @@ func _al_cambiar_energia(energia: float, maxima: float) -> void:
 	barra_luz.max_value = maxima
 	barra_luz.value = energia
 	barra_luz.modulate = COLOR_BARRA_BAJA if energia < ENERGIA_BAJA else Color.WHITE
+
+
+## Barra de vida del jefe: aparece con su nombre y baja suave al recibir daño.
+func _al_cambiar_jefe(nombre: String, vida: int, maxima: int) -> void:
+	var visible_antes: bool = barra_jefe.visible
+	var visible_ahora: bool = maxima > 0
+	barra_jefe.visible = visible_ahora
+	nombre_jefe.visible = visible_ahora
+	if _tween_jefe != null and _tween_jefe.is_valid():
+		_tween_jefe.kill()
+	if not visible_ahora:
+		return
+	nombre_jefe.text = nombre
+	barra_jefe.max_value = maxima
+	if not visible_antes:
+		barra_jefe.value = vida   # recién aparece: llena, sin animación
+		return
+	_tween_jefe = create_tween()
+	_tween_jefe.tween_property(barra_jefe, "value", float(vida), 0.25)
 
 
 func _al_cambiar_luciernagas(liberadas: int, total: int) -> void:
@@ -91,6 +116,15 @@ func _preparar_estilos() -> void:
 	fondo.set_corner_radius_all(6)
 	barra_luz.add_theme_stylebox_override("fill", relleno)
 	barra_luz.add_theme_stylebox_override("background", fondo)
+
+	# Barra del jefe: relleno morado de la Bruma
+	var relleno_jefe: StyleBoxFlat = StyleBoxFlat.new()
+	relleno_jefe.bg_color = COLOR_JEFE
+	relleno_jefe.set_corner_radius_all(6)
+	var fondo_jefe: StyleBoxFlat = fondo.duplicate()
+	fondo_jefe.border_color = Color(0.45, 0.3, 0.55)
+	barra_jefe.add_theme_stylebox_override("fill", relleno_jefe)
+	barra_jefe.add_theme_stylebox_override("background", fondo_jefe)
 
 	# Cartel: tabla oscura con borde dorado
 	_estilo_cartel = StyleBoxFlat.new()

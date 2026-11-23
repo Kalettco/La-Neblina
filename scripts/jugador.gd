@@ -49,6 +49,9 @@ const TIEMPO_INVULNERABLE: float = 1.2
 const EMPUJON: Vector2 = Vector2(330.0, -420.0)
 const TIEMPO_SIN_CONTROL: float = 0.25   # tras un empujón, el jugador no frena el golpe
 const MIRAR_ADELANTE: float = 90.0       # la cámara mira hacia donde va Lía
+const MIRAR_ABAJO: float = 150.0         # al caer, la cámara mira hacia abajo (niveles que bajan)
+const CAIDA_PARA_MIRAR_ABAJO: float = 200.0
+const CAIDA_EN_CORRIENTE: float = 250.0  # caída máxima dentro de una corriente de aire
 
 var mirando: int = 1    # 1 = derecha, -1 = izquierda
 var _coyote: float = 0.0
@@ -64,27 +67,56 @@ var _energia_avisada: float = -1.0      # último valor enviado al HUD
 var invulnerable: float = 0.0           # segundos que quedan sin poder recibir daño
 var impulsado: bool = false             # rebote de flor: no se corta al soltar el salto
 var bloqueado: bool = false             # sin caminar ni saltar (entrega de luz final)
+var corrientes: int = 0                 # corrientes de aire que la tocan (frenan la caída)
 var _sin_control: float = 0.0
 var _sacudida: float = 0.0
 var _sacudida_duracion: float = 0.0
 var _sacudida_fuerza: float = 0.0
 var _espera_disparo: float = 0.0
-var _tiempo_disparando: float = 0.0     # para la animación lia_disparar
+var _disparo_pendiente: float = -1.0    # >= 0: segundos hasta que sale la chispa (cuadro 2 de "disparar")
+var _objetivo_disparo: Vector2 = Vector2.ZERO
 var tiempo_campo: float = 0.0           # > 0 mientras el campo de luz está activo
 var recarga_campo_restante: float = 0.0 # > 0 mientras el campo se recarga
 var _desde_clic_izq: float = 99.0       # segundos desde el último clic izquierdo / F
 var _desde_disparo: float = 99.0        # segundos desde el último disparo
 var _ultima_chispa: Node2D = null
-var _tiempo_animacion_campo: float = 0.0
 
-# --- Animación (para cuando llegue el arte) ---
+# --- Animación (AnimatedSprite2D Visual/Sprite) ---
+## Cada tira es lia_<nombre>.png: cuadros de 72 x 96 sin espacios.
+## La cantidad de cuadros se calcula como ancho / 72 al iniciar.
+const RUTA_SPRITE: String = "res://assets/sprites/lia_%s.png"
+const ANCHO_CUADRO: int = 72
+const ALTO_CUADRO: int = 96
+const ANIMACIONES: Dictionary = {
+	"idle":      {"fps": 6.0,  "repite": true},
+	"caminar":   {"fps": 12.0, "repite": true},
+	"saltar":    {"fps": 8.0,  "repite": false},  # queda en el último cuadro
+	"caer":      {"fps": 8.0,  "repite": true},
+	"aterrizar": {"fps": 12.0, "repite": false},
+	"dano":      {"fps": 10.0, "repite": false},
+	"desmayo":   {"fps": 10.0, "repite": false},  # queda en el último cuadro
+	"entregar":  {"fps": 6.0,  "repite": false, "max_cuadros": 4},  # 1-3 una vez, luego queda en el 4
+	"disparar":  {"fps": 15.0, "repite": false},
+	"campo":     {"fps": 12.0, "repite": false},
+}
+const CUADRO_DISPARO: int = 1   # la chispa sale en el cuadro 2 de "disparar"
+
+@export var caida_para_aterrizar: float = 600.0  # px/s de caída mínima para mostrar "aterrizar"
+
 var _estaba_en_suelo: bool = true
 var _tiempo_aterrizar: float = 0.0
+var _velocidad_caida: float = 0.0       # velocity.y del último cuadro en el aire
+var _accion: String = ""                # "campo" o "disparar" mientras dura su animación
+var _tiempo_accion: float = 0.0
+var _reiniciar: String = ""             # animación que debe volver a empezar desde el cuadro 1
+var _ultima_animacion: String = ""
+var _sin_arte: bool = false             # no hay lia_idle.png: se usan Cuerpo y Linterna
 var muerto: bool = false
 var recibiendo_dano: bool = false
 var entregando_luz: bool = false
 
 @onready var visual: Node2D = $Visual
+@onready var sprite: AnimatedSprite2D = get_node_or_null("Visual/Sprite") as AnimatedSprite2D
 @onready var punto_linterna: Marker2D = $PuntoLinterna
 @onready var cono: PointLight2D = $PuntoLinterna/Cono
 @onready var aura: PointLight2D = $Aura
@@ -95,6 +127,7 @@ func _ready() -> void:
 	add_to_group("jugador")
 	energia = energia_maxima
 	_preparar_luces()
+	_crear_animaciones()
 	Juego.registrar_jugador(self)
 
 
@@ -131,7 +164,12 @@ func _process(delta: float) -> void:
 
 func _aplicar_gravedad(delta: float) -> void:
 	if not is_on_floor():
-		velocity.y = minf(velocity.y + gravedad * delta, caida_maxima)
+		var maxima: float = CAIDA_EN_CORRIENTE if corrientes > 0 else caida_maxima
+		if velocity.y > maxima:
+			# Al entrar a la corriente cayendo rápido, frena en ~0,2 s
+			velocity.y = move_toward(velocity.y, maxima, 6000.0 * delta)
+		else:
+			velocity.y = minf(velocity.y + gravedad * delta, maxima)
 
 
 func _procesar_salto(delta: float) -> void:
@@ -177,8 +215,12 @@ func _procesar_movimiento(delta: float) -> void:
 ## Gasta luz; no se puede con menos de costo_disparo ni durante la entrega de luz.
 func _procesar_disparo(delta: float) -> void:
 	_espera_disparo = maxf(_espera_disparo - delta, 0.0)
-	_tiempo_disparando = maxf(_tiempo_disparando - delta, 0.0)
 	_desde_disparo += delta
+	# La chispa sale cuando la animación "disparar" llega a su cuadro 2
+	if _disparo_pendiente >= 0.0:
+		_disparo_pendiente -= delta
+		if _disparo_pendiente <= 0.0:
+			_lanzar_chispa()
 	if not Juego.tiene_disparo or entregando_luz or bloqueado:
 		return
 	if not Input.is_action_just_pressed("disparar") or _espera_disparo > 0.0:
@@ -192,22 +234,40 @@ func _procesar_disparo(delta: float) -> void:
 		return
 	energia -= costo_disparo
 	_espera_disparo = cadencia
-	_tiempo_disparando = 0.2
 	var raton: Vector2 = get_global_mouse_position()
 	if absf(raton.x - global_position.x) > 1.0:
 		mirando = 1 if raton.x > global_position.x else -1
+	_objetivo_disparo = raton
+	_desde_disparo = 0.0
+	_iniciar_accion("disparar")
+	_disparo_pendiente = _retraso_disparo()
+	if _disparo_pendiente <= 0.0:
+		_lanzar_chispa()
+
+
+## Crea la chispa desde la linterna hacia el punto donde se hizo clic.
+func _lanzar_chispa() -> void:
+	_disparo_pendiente = -1.0
 	_colocar_punto_linterna()
 	var origen: Vector2 = punto_linterna.global_position
 	var chispa: Node2D = ESCENA_CHISPA.instantiate()
 	chispa.position = origen
-	chispa.set("direccion", (raton - origen).normalized())
+	chispa.set("direccion", (_objetivo_disparo - origen).normalized())
 	chispa.set("velocidad", velocidad_chispa)
 	chispa.set("alcance", alcance_chispa)
 	chispa.set("dano", dano_chispa)
 	get_parent().add_child(chispa)
 	_ultima_chispa = chispa
-	_desde_disparo = 0.0
 	Audio.sfx_disparo()
+
+
+## Segundos desde el cuadro 1 hasta el cuadro 2 de "disparar" (0 si no hay arte).
+func _retraso_disparo() -> float:
+	if sprite == null or sprite.sprite_frames == null or not sprite.sprite_frames.has_animation("disparar"):
+		return 0.0
+	if sprite.sprite_frames.get_frame_count("disparar") <= CUADRO_DISPARO:
+		return 0.0
+	return CUADRO_DISPARO / sprite.sprite_frames.get_animation_speed("disparar")
 
 
 # --- Campo de luz ---
@@ -216,7 +276,6 @@ func _procesar_disparo(delta: float) -> void:
 func _procesar_campo(delta: float) -> void:
 	tiempo_campo = maxf(tiempo_campo - delta, 0.0)
 	recarga_campo_restante = maxf(recarga_campo_restante - delta, 0.0)
-	_tiempo_animacion_campo = maxf(_tiempo_animacion_campo - delta, 0.0)
 	_desde_clic_izq += delta
 	if Input.is_action_just_pressed("linterna"):
 		# Combo al revés: primero el derecho y luego el izquierdo. Se anula ese disparo.
@@ -244,6 +303,7 @@ func _puede_usar_campo() -> bool:
 ## Devuelve la luz del disparo que formó parte del combo y quita esa chispa.
 func _anular_ultimo_disparo() -> void:
 	energia = minf(energia + costo_disparo, energia_maxima)
+	_disparo_pendiente = -1.0   # si la chispa aún no salía, ya no sale
 	if is_instance_valid(_ultima_chispa):
 		_ultima_chispa.queue_free()
 	_ultima_chispa = null
@@ -256,7 +316,7 @@ func _activar_campo() -> void:
 	energia -= costo_campo
 	tiempo_campo = duracion_campo
 	recarga_campo_restante = recarga_campo
-	_tiempo_animacion_campo = 0.4
+	_iniciar_accion("campo")
 	_desde_clic_izq = 99.0
 	var centro: Vector2 = global_position + Vector2(0.0, -42.0)
 	var onda: Node2D = ESCENA_ONDA.instantiate()
@@ -328,6 +388,7 @@ func desmayar() -> void:
 	cono.enabled = false
 	visual.modulate.a = 1.0
 	tiempo_campo = 0.0
+	_disparo_pendiente = -1.0
 
 
 ## La llama Juego: vuelve al último farol (o al inicio).
@@ -344,6 +405,11 @@ func reaparecer(posicion: Vector2) -> void:
 	invulnerable = TIEMPO_INVULNERABLE
 	tiempo_campo = 0.0
 	recarga_campo_restante = 0.0
+	_disparo_pendiente = -1.0
+	_accion = ""
+	_tiempo_accion = 0.0
+	_tiempo_aterrizar = 0.0
+	_velocidad_caida = 0.0
 	camara.reset_smoothing()
 
 
@@ -410,6 +476,9 @@ func _actualizar_visual() -> void:
 func _actualizar_camara(delta: float) -> void:
 	# Mira 90 px hacia adelante y aplica la sacudida
 	camara.position.x = move_toward(camara.position.x, MIRAR_ADELANTE * mirando, 300.0 * delta)
+	# Al caer, mira 150 px hacia abajo para ver dónde va a aterrizar
+	var abajo: float = MIRAR_ABAJO if velocity.y > CAIDA_PARA_MIRAR_ABAJO and not muerto else 0.0
+	camara.position.y = move_toward(camara.position.y, abajo, 400.0 * delta)
 	if _sacudida > 0.0:
 		_sacudida = maxf(_sacudida - delta, 0.0)
 		var fuerza: float = _sacudida_fuerza * (_sacudida / _sacudida_duracion)
@@ -478,38 +547,120 @@ func _crear_textura_cono() -> ImageTexture:
 	return ImageTexture.create_from_image(imagen)
 
 
-# --- Animación (preparada para el AnimatedSprite2D "Sprite") ---
+# --- Animación (AnimatedSprite2D "Sprite") ---
+
+## Arma las SpriteFrames cortando cada tira en cuadros de 72 x 96.
+## Si un archivo falta o tiene medidas inválidas, esa animación usa "idle".
+## Si falta lia_idle.png, se oculta el Sprite y se muestran Cuerpo y Linterna.
+func _crear_animaciones() -> void:
+	if sprite == null:
+		return
+	var cuadros: SpriteFrames = SpriteFrames.new()
+	cuadros.remove_animation("default")
+	for nombre: String in ANIMACIONES:
+		var datos: Dictionary = ANIMACIONES[nombre]
+		var tira: Texture2D = _cargar_tira(nombre)
+		if tira == null:
+			continue
+		@warning_ignore("integer_division")
+		var cantidad: int = tira.get_width() / ANCHO_CUADRO
+		if datos.has("max_cuadros"):
+			cantidad = mini(cantidad, int(datos["max_cuadros"]))
+		cuadros.add_animation(nombre)
+		cuadros.set_animation_speed(nombre, float(datos["fps"]))
+		cuadros.set_animation_loop(nombre, bool(datos["repite"]))
+		for i in range(cantidad):
+			var cuadro: AtlasTexture = AtlasTexture.new()
+			cuadro.atlas = tira
+			cuadro.region = Rect2(i * ANCHO_CUADRO, 0, ANCHO_CUADRO, ALTO_CUADRO)
+			cuadros.add_frame(nombre, cuadro)
+	sprite.sprite_frames = cuadros
+	_sin_arte = not cuadros.has_animation("idle")
+	sprite.visible = not _sin_arte
+	for respaldo: String in ["Visual/Cuerpo", "Visual/Linterna"]:
+		var nodo: CanvasItem = get_node_or_null(respaldo) as CanvasItem
+		if nodo != null:
+			nodo.visible = _sin_arte
+	if not _sin_arte:
+		sprite.play("idle")
+		_ultima_animacion = "idle"
+
+
+## Carga lia_<nombre>.png. Devuelve null (con aviso) si falta o si sus medidas no sirven.
+func _cargar_tira(nombre: String) -> Texture2D:
+	var ruta: String = RUTA_SPRITE % nombre
+	if not ResourceLoader.exists(ruta):
+		push_warning("Falta %s: se usa \"idle\" en su lugar." % ruta)
+		return null
+	var tira: Texture2D = load(ruta) as Texture2D
+	if tira == null:
+		push_warning("No se pudo cargar %s: se usa \"idle\" en su lugar." % ruta)
+		return null
+	var ancho: int = tira.get_width()
+	var alto: int = tira.get_height()
+	if alto != ALTO_CUADRO or ancho < ANCHO_CUADRO or ancho % ANCHO_CUADRO != 0:
+		push_warning("%s mide %d x %d: el alto debe ser %d y el ancho múltiplo de %d. Se usa \"idle\"." \
+			% [ruta, ancho, alto, ALTO_CUADRO, ANCHO_CUADRO])
+		return null
+	return tira
+
+
+## Duración en segundos de una animación (0 si no existe).
+func _duracion(nombre: String) -> float:
+	if sprite == null or sprite.sprite_frames == null or not sprite.sprite_frames.has_animation(nombre):
+		return 0.0
+	return sprite.sprite_frames.get_frame_count(nombre) / sprite.sprite_frames.get_animation_speed(nombre)
+
+
+## "campo" o "disparar": se muestran encima del estado actual mientras dura su animación.
+func _iniciar_accion(nombre: String) -> void:
+	_accion = nombre
+	_tiempo_accion = _duracion(nombre)
+	_reiniciar = nombre
+
 
 func _actualizar_animacion(delta: float) -> void:
 	var en_suelo: bool = is_on_floor()
-	if en_suelo and not _estaba_en_suelo:
-		_tiempo_aterrizar = 0.17   # 2 cuadros a 12 fps
-	_estaba_en_suelo = en_suelo
+	_tiempo_accion = maxf(_tiempo_accion - delta, 0.0)
 	_tiempo_aterrizar = maxf(_tiempo_aterrizar - delta, 0.0)
+	# Aterrizar: una vez al tocar el suelo, solo si venía cayendo rápido
+	if en_suelo and not _estaba_en_suelo and _velocidad_caida >= caida_para_aterrizar:
+		_tiempo_aterrizar = _duracion("aterrizar")
+		_reiniciar = "aterrizar"
+	_velocidad_caida = 0.0 if en_suelo else velocity.y
+	_estaba_en_suelo = en_suelo
 
-	var sprite: AnimatedSprite2D = get_node_or_null("Visual/Sprite") as AnimatedSprite2D
-	if sprite == null:
+	if sprite == null or _sin_arte:
 		return
 	var nombre: String = _elegir_animacion(en_suelo)
-	if sprite.animation != nombre and sprite.sprite_frames != null and sprite.sprite_frames.has_animation(nombre):
-		sprite.play(nombre)
+	_ultima_animacion = nombre
+	var real: String = nombre if sprite.sprite_frames.has_animation(nombre) else "idle"
+	if sprite.animation != real:
+		sprite.play(real)
+	elif _reiniciar == nombre:
+		sprite.frame = 0
+		sprite.play(real)
+	_reiniciar = ""
 
 
+## Prioridad: desmayo > entregar > dano > campo/disparar > saltar/caer > aterrizar > caminar > idle.
 func _elegir_animacion(en_suelo: bool) -> String:
 	if muerto:
-		return "lia_desmayo"
+		return "desmayo"
 	if entregando_luz:
-		return "lia_entregar"
+		return "entregar"
 	if recibiendo_dano:
-		return "lia_dano"
-	if _tiempo_animacion_campo > 0.0:
-		return "lia_campo"
-	if _tiempo_disparando > 0.0:
-		return "lia_disparar"
+		return "dano"
+	if _tiempo_accion > 0.0 and _accion != "":
+		return _accion
 	if not en_suelo:
-		return "lia_saltar" if velocity.y < 0.0 else "lia_caer"
+		if velocity.y < 0.0:
+			return "saltar"
+		if velocity.y > 0.0:
+			return "caer"
+		return _ultima_animacion if _ultima_animacion in ["saltar", "caer"] else "caer"
 	if _tiempo_aterrizar > 0.0:
-		return "lia_aterrizar"
-	if absf(velocity.x) > 10.0:
-		return "lia_caminar"
-	return "lia_idle"
+		return "aterrizar"
+	if absf(velocity.x) > 20.0:
+		return "caminar"
+	return "idle"

@@ -8,6 +8,7 @@ signal guardianas_cambiadas(cantidad: int)
 signal zona_cambiada(nombre: String)
 signal toast_pedido(texto: String)
 signal cartel_cambiado(texto: String, es_nota: bool)   # texto vacío = ocultar
+signal jefe_cambiado(nombre: String, vida: int, maxima: int)   # maxima 0 = ocultar la barra
 
 const RUTA_PROGRESO: String = "user://progreso.cfg"
 const DISTANCIA_CARTEL_X: float = 2.5 * 48.0
@@ -295,7 +296,8 @@ func ir_a_nivel(indice: int) -> void:
 
 
 ## Lía llegó a la salida de un nivel: lo que sigue depende del nivel.
-func completar_nivel() -> void:
+## "mensaje" reemplaza al aviso de siempre (ej. al tocar la Luciérnaga Reina).
+func completar_nivel(mensaje: String = "") -> void:
 	if nivel_terminado:
 		return
 	nivel_terminado = true
@@ -303,7 +305,10 @@ func completar_nivel() -> void:
 	if is_instance_valid(jugador):
 		jugador.bloqueado = true
 		jugador.invulnerable = 99.0
-	toast("Llegaste al final del sendero." if nivel_actual == 0 else "Llegaste a la salida.")
+	if mensaje != "":
+		toast(mensaje)
+	else:
+		toast("Llegaste al final del sendero." if nivel_actual == 0 else "Llegaste a la salida.")
 	await get_tree().create_timer(1.5).timeout
 	var siguiente: int = nivel_actual + 1
 	# Se guarda ya el nivel siguiente, por si el jugador cierra durante la historia
@@ -417,6 +422,18 @@ func reaparecer() -> void:
 	# Los frascos agarrados después del último farol vuelven a aparecer
 	for frasco: Node in get_tree().get_nodes_in_group("frascos"):
 		frasco.call("restaurar")
+	# Objetos que vuelven a su estado inicial (ej. plataformas que caen)
+	for objeto: Node in get_tree().get_nodes_in_group("reiniciables"):
+		objeto.call("reiniciar")
+
+
+## Barra de vida grande del jefe o mini-jefe (HUD).
+func avisar_jefe(nombre: String, vida: int, maxima: int) -> void:
+	jefe_cambiado.emit(nombre, vida, maxima)
+
+
+func ocultar_jefe() -> void:
+	jefe_cambiado.emit("", 0, 0)
 
 
 func sacudir_camara(fuerza: float, duracion: float) -> void:

@@ -12,6 +12,9 @@ const COLOR_LUCIERNAGA: Color = Color(1.0, 0.92, 0.35)
 @onready var visual: Node2D = $Visual
 @onready var luz: PointLight2D = $Luz
 
+## Luz que recarga (las de las arenas recargan más).
+var recarga: float = RECARGA
+
 var _tiempo: float = 0.0
 var _tomada: bool = false
 
@@ -43,7 +46,7 @@ func _al_entrar_cuerpo(cuerpo: Node2D) -> void:
 	if _tomada or not cuerpo is Jugador or (cuerpo as Jugador).muerto:
 		return
 	_tomada = true
-	(cuerpo as Jugador).recargar(RECARGA)
+	(cuerpo as Jugador).recargar(recarga)
 	Audio.sfx_frasco()
 	Efectos.estallido(get_parent(), global_position, COLOR_LUCIERNAGA, 10)
 	queue_free()

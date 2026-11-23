@@ -42,6 +42,11 @@ const ESCENA_PUERTA_ARENA: PackedScene = preload("res://escenas/objetos/puerta_a
 const ESCENA_ARENA: PackedScene = preload("res://escenas/objetos/arena.tscn")
 const ESCENA_GUARDIANA: PackedScene = preload("res://escenas/objetos/guardiana.tscn")
 const ESCENA_ARBOL: PackedScene = preload("res://escenas/objetos/arbol_madre.tscn")
+const ESCENA_PLATAFORMA_CAE: PackedScene = preload("res://escenas/objetos/plataforma_cae.tscn")
+const ESCENA_CORRIENTE: PackedScene = preload("res://escenas/objetos/corriente.tscn")
+const ESCENA_MURCIELAGO: PackedScene = preload("res://escenas/enemigos/murcielago.tscn")
+const ESCENA_GOLEM: PackedScene = preload("res://escenas/enemigos/golem.tscn")
+const ESCENA_REINA: PackedScene = preload("res://escenas/objetos/luciernaga_reina.tscn")
 
 # Terrenos del TileSet provisional (columna del atlas)
 const TERRENO_BOSQUE: int = 0
@@ -64,6 +69,7 @@ const COLOR_FONDO_CUEVA: Color = Color("17130f")
 const VELOCIDAD_COLOR: float = 6.0     # el color de la noche cambia en ~0,5 s
 const MULTIPLICADOR_GRACIA_COPA: float = 3.0   # plataformas de luz en la copa: 0,5 s x 3
 const EXTRA_ABAJO: float = 240.0       # roca de relleno visible bajo el nivel (deja sitio al cartel)
+const SIN_LIMITE: int = 100000         # zona sin límite en x o en y
 
 ## Solo para escenas de PRUEBA: si se pone un archivo de datos aquí, se usa ese
 ## en vez del nivel actual, y se juega como acto 2 (con disparo).
@@ -124,7 +130,14 @@ func inicio(x: int, y: int) -> void:
 
 ## Zona horizontal [x0, x1): nombre en el HUD, oscuridad y si es cueva.
 func zona(x0: int, x1: int, nombre: String, oscuridad: float, es_cueva: bool) -> void:
-	zonas.append({"x0": x0, "x1": x1, "nombre": nombre, "oscuridad": oscuridad, "es_cueva": es_cueva})
+	zonas.append({"x0": x0, "x1": x1, "y0": -SIN_LIMITE, "y1": SIN_LIMITE,
+		"nombre": nombre, "oscuridad": oscuridad, "es_cueva": es_cueva})
+
+
+## Zona vertical [y0, y1) para niveles que bajan: ocupa todo el ancho del nivel.
+func zona_vertical(y0: int, y1: int, nombre: String, oscuridad: float, es_cueva: bool) -> void:
+	zonas.append({"x0": -SIN_LIMITE, "x1": SIN_LIMITE, "y0": y0, "y1": y1,
+		"nombre": nombre, "oscuridad": oscuridad, "es_cueva": es_cueva})
 
 
 ## Rellena con roca desde la fila y hasta el fondo (x0 y x1 incluidos).
@@ -143,7 +156,7 @@ func bloque(x0: int, x1: int, y0: int, y1: int) -> void:
 func plataforma_luz(x0: int, x1: int, y: int) -> void:
 	for x in range(x0, x1 + 1):
 		var pieza: Node2D = ESCENA_PLATAFORMA.instantiate()
-		if _terreno_de_columna(x) == TERRENO_COPA:
+		if _terreno_de_celda(Vector2i(x, y)) == TERRENO_COPA:
 			pieza.set("tiempo_gracia", 0.5 * MULTIPLICADOR_GRACIA_COPA)
 		_colocar(pieza, x, y, objetos)
 
@@ -183,6 +196,16 @@ func puerta(x: int, y0: int, y1: int, grupo: String) -> void:
 	objetos.add_child(nueva)
 
 
+## Puerta de raíces ACOSTADA (tapa un hueco en el suelo): columnas x0..x1 en la fila y.
+func puerta_suelo(x0: int, x1: int, y: int, grupo: String) -> void:
+	var nueva: Node2D = ESCENA_PUERTA.instantiate()
+	nueva.set("grupo", grupo)
+	nueva.set("alto_casillas", 1)
+	nueva.set("ancho_casillas", x1 - x0 + 1)
+	nueva.position = Vector2(x0 * CASILLA, y * CASILLA)
+	objetos.add_child(nueva)
+
+
 func cartel(x: int, y: int, texto: String) -> void:
 	_cartel(x, y, texto, false)
 
@@ -215,6 +238,61 @@ func arbol(x: int, y: int) -> void:
 ## Lanzadora de bruma (acto 2): flota en la casilla (x, y).
 func lanzadora(x: int, y: int) -> void:
 	_colocar(ESCENA_LANZADORA.instantiate(), x, y, enemigos)
+
+
+## Enjambre de murciélagos de bruma alrededor de la casilla (x, y).
+func murcielagos(x: int, y: int, cantidad: int) -> void:
+	for i in range(cantidad):
+		var nuevo: Node2D = crear_murcielago(i, cantidad)
+		nuevo.position = pie_de_casilla(x, y) + desplazamiento_enjambre(i, cantidad)
+		enemigos.add_child(nuevo)
+
+
+## Gólem de bruma: camina entre las columnas x0 y x1.
+func golem(x: int, y: int, x0: int, x1: int) -> void:
+	_colocar(crear_golem(x0, x1), x, y, enemigos)
+
+
+## Plataforma que cae: 3 casillas (x, x+1, x+2) en la fila y.
+func plataforma_cae(x: int, y: int) -> void:
+	var nueva: Node2D = ESCENA_PLATAFORMA_CAE.instantiate()
+	nueva.position = Vector2((x + 1.5) * CASILLA, (y + 1) * CASILLA)
+	objetos.add_child(nueva)
+
+
+## Corriente de aire: columnas x0..x1, filas y0..y1. Frena la caída de Lía.
+func corriente(x0: int, x1: int, y0: int, y1: int) -> void:
+	var nueva: Node2D = ESCENA_CORRIENTE.instantiate()
+	nueva.set("tamano", Vector2((x1 - x0 + 1) * CASILLA, (y1 - y0 + 1) * CASILLA))
+	nueva.position = Vector2(x0 * CASILLA, y0 * CASILLA)
+	objetos.add_child(nueva)
+
+
+## Luciérnaga Reina: al tocarla termina el nivel 4 (historia y campo de luz).
+## Si se da id_arena, aparece solo cuando esa arena se vence.
+func reina(x: int, y: int, id_arena: String = "") -> void:
+	var nueva: Node2D = ESCENA_REINA.instantiate()
+	nueva.set("id_arena", id_arena)
+	_colocar(nueva, x, y, objetos)
+
+
+## (También los usa la arena de oleadas.)
+static func crear_murcielago(indice: int, cantidad: int) -> Node2D:
+	var nuevo: Node2D = ESCENA_MURCIELAGO.instantiate()
+	nuevo.set("fase", TAU * indice / maxf(cantidad, 1.0))
+	return nuevo
+
+
+static func desplazamiento_enjambre(indice: int, cantidad: int) -> Vector2:
+	var angulo: float = TAU * indice / maxf(cantidad, 1.0)
+	return Vector2(cos(angulo) * 40.0, sin(angulo) * 24.0)
+
+
+static func crear_golem(x0: int, x1: int) -> Node2D:
+	var nuevo: Node2D = ESCENA_GOLEM.instantiate()
+	nuevo.set("limite_izq", (x0 + 0.5) * CASILLA)
+	nuevo.set("limite_der", (x1 + 0.5) * CASILLA)
+	return nuevo
 
 
 # =============================================================================
@@ -279,9 +357,9 @@ func _crear_jugador() -> void:
 	camara.reset_smoothing()
 
 
-func zona_en(x_casilla: int) -> Dictionary:
+func zona_en(celda: Vector2i) -> Dictionary:
 	for z: Dictionary in zonas:
-		if x_casilla >= z["x0"] and x_casilla < z["x1"]:
+		if celda.x >= z["x0"] and celda.x < z["x1"] and celda.y >= z["y0"] and celda.y < z["y1"]:
 			return z
 	return zonas[0] if not zonas.is_empty() else {}
 
@@ -289,7 +367,8 @@ func zona_en(x_casilla: int) -> Dictionary:
 func _actualizar_zona(delta: float) -> void:
 	if not is_instance_valid(jugador):
 		return
-	var z: Dictionary = zona_en(int(floor(jugador.global_position.x / CASILLA)))
+	var pies: Vector2 = jugador.global_position - Vector2(0.0, 1.0)
+	var z: Dictionary = zona_en(Vector2i(floori(pies.x / CASILLA), floori(pies.y / CASILLA)))
 	if z.is_empty():
 		return
 	Juego.cambiar_zona(z["nombre"])
@@ -312,8 +391,8 @@ func _color_de_oscuridad(oscuridad: float) -> Color:
 	return COLORES_OSCURIDAD[mejor]
 
 
-func _terreno_de_columna(x: int) -> int:
-	var z: Dictionary = zona_en(x)
+func _terreno_de_celda(celda: Vector2i) -> int:
+	var z: Dictionary = zona_en(celda)
 	if z.is_empty():
 		return TERRENO_BOSQUE
 	if z["es_cueva"]:
@@ -328,13 +407,13 @@ func _pintar_terreno() -> void:
 	for celda: Vector2i in _celdas_solidas.keys():
 		var arriba_solida: bool = _celdas_solidas.has(celda + Vector2i.UP)
 		var fila: int = FILA_INTERIOR if arriba_solida else FILA_SUPERFICIE
-		terreno.set_cell(celda, 0, Vector2i(_terreno_de_columna(celda.x), fila))
+		terreno.set_cell(celda, 0, Vector2i(_terreno_de_celda(celda), fila))
 	# Relleno bajo el nivel (solo decorado): continúa las columnas que llegan al fondo
 	var filas_extra: int = int(ceil(EXTRA_ABAJO / CASILLA)) + 1
 	for x in range(ancho):
 		if _celdas_solidas.has(Vector2i(x, alto - 1)):
 			for y in range(alto, alto + filas_extra):
-				terreno.set_cell(Vector2i(x, y), 0, Vector2i(_terreno_de_columna(x), FILA_INTERIOR))
+				terreno.set_cell(Vector2i(x, y), 0, Vector2i(_terreno_de_celda(Vector2i(x, alto - 1)), FILA_INTERIOR))
 
 
 func _obtener_tileset() -> TileSet:
@@ -398,11 +477,16 @@ func _crear_fondo() -> void:
 
 	for z: Dictionary in zonas:
 		if z["es_cueva"]:
+			# Se recorta al nivel (las zonas verticales no tienen límite en x)
+			var izquierda: float = maxi(z["x0"], -2) * CASILLA
+			var derecha: float = mini(z["x1"], ancho + 2) * CASILLA
+			var arriba: float = -1080.0 if z["y0"] <= 0 else z["y0"] * CASILLA
+			var abajo: float = piso + EXTRA_ABAJO if z["y1"] >= alto else z["y1"] * CASILLA
 			var roca: ColorRect = ColorRect.new()
 			roca.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			roca.color = COLOR_FONDO_CUEVA
-			roca.position = Vector2(z["x0"] * CASILLA, -1080.0)
-			roca.size = Vector2((z["x1"] - z["x0"]) * CASILLA, piso + 1080.0)
+			roca.position = Vector2(izquierda, arriba)
+			roca.size = Vector2(derecha - izquierda, abajo - arriba)
 			fondo.add_child(roca)
 
 
@@ -461,10 +545,16 @@ func puerta_arena(x: int, y0: int, y1: int, id: String, cerrada: bool = false) -
 
 
 ## Arena de oleadas entre las columnas x0 y x1 (ver formato en scripts/objetos/arena.gd).
-func arena(x0: int, x1: int, id: String, oleadas: Array) -> void:
+## En niveles verticales, y0..y1 limita las filas donde empieza (si no, cualquier fila).
+## luciernagas_cada > 0: durante la pelea aparecen luciérnagas sueltas cada esos segundos.
+func arena(x0: int, x1: int, id: String, oleadas: Array, y0: int = -SIN_LIMITE, y1: int = SIN_LIMITE,
+		luciernagas_cada: float = 0.0) -> void:
 	var nueva: Node2D = ESCENA_ARENA.instantiate()
+	nueva.set("luciernagas_cada", luciernagas_cada)
 	nueva.set("id_arena", id)
 	nueva.set("x0", x0)
 	nueva.set("x1", x1)
+	nueva.set("y0", y0)
+	nueva.set("y1", y1)
 	nueva.set("oleadas", oleadas)
 	enemigos.add_child(nueva)

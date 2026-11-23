@@ -182,6 +182,7 @@ position = Vector2(4750, 952)
 [node name="Puerta" parent="." unique_id=271952198 instance=ExtResource("10_puerta")]
 position = Vector2(4950, 664)
 alto_casillas = 6
+ancho_casillas = null
 
 [node name="SombraCazadora" parent="." unique_id=1686436595 instance=ExtResource("11_sombra")]
 position = Vector2(5450, 952)
