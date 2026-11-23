@@ -3,6 +3,7 @@ extends Area2D
 ## Vuela recto hacia donde apuntó el mouse. Mientras vuela CUENTA COMO LUZ
 ## (radio 60 px): abre flores, sostiene plataformas de luz, carga braseros.
 ## Choca con el mundo (se apaga con chispas) y con enemigos (les hace daño).
+## Con Shift (puntería asistida) sale hacia el enemigo más cercano al mouse y lo persigue.
 ## Al tocar un brasero lo carga de golpe (3 chispas lo encienden).
 
 const RADIO_LUZ: float = 60.0
@@ -12,6 +13,9 @@ var direccion: Vector2 = Vector2.RIGHT
 var velocidad: float = 1100.0
 var alcance: float = 900.0
 var dano: int = 1
+## Puntería asistida (Shift): la chispa gira hacia este enemigo mientras vuela.
+var objetivo: Node2D = null
+const GIRO: float = 9.0                  # radianes por segundo
 
 var _recorrido: float = 0.0
 var _apagada: bool = false
@@ -30,6 +34,10 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if _apagada:
 		return
+	if is_instance_valid(objetivo) and not objetivo.get("derrotado"):
+		var deseada: Vector2 = (Vector2(objetivo.call("centro")) - global_position).normalized()
+		var giro: float = clampf(direccion.angle_to(deseada), -GIRO * delta, GIRO * delta)
+		direccion = direccion.rotated(giro)
 	var paso: float = velocidad * delta
 	global_position += direccion * paso
 	_recorrido += paso
@@ -49,8 +57,9 @@ func _al_tocar_area(area: Area2D) -> void:
 		area.call("recibir_dano", dano, global_position)
 		_apagar()
 	elif area.has_method("recibir_chispa"):
-		area.call("recibir_chispa")
-		_apagar()
+		# Si devuelve false (ej. farol que no recarga), la chispa sigue de largo
+		if area.call("recibir_chispa") != false:
+			_apagar()
 
 
 func _al_tocar_cuerpo(_cuerpo: Node2D) -> void:

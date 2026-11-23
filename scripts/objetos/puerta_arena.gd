@@ -5,6 +5,8 @@ extends StaticBody2D
 ## - Salida  (cerrada_al_inicio = true): cerrada hasta vencer la última oleada.
 ## Al vencer la arena, todas las puertas de ese id se abren.
 ## Mide 1 casilla de ancho y "alto_casillas" de alto.
+## Capa 4 (como las plataformas): bloquea a Lía pero deja pasar las chispas, para
+## poder dispararle al farol de la entrada y recargar luz durante la pelea.
 ## Origen = esquina SUPERIOR IZQUIERDA de la casilla de arriba.
 
 const CASILLA: float = 48.0

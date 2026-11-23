@@ -55,9 +55,9 @@ theme_override_colors/font_color = Color(0.8, 0.81, 0.84, 1)
 theme_override_constants/line_spacing = 8
 theme_override_font_sizes/font_size = 28
 text = "A / D o flechas: caminar    ·    W, flecha arriba o Espacio: saltar
-Clic izquierdo o F: linterna (apunta con el mouse)
+Shift: correr y saltar más lejos; al disparar, la chispa busca al enemigo    ·    Clic izquierdo o F: linterna
 R junto al farol encendido: recargar la luz    ·    E: entregar la luz
-Clic derecho: disparo de luz (desde el nivel 3)    ·    Q: campo de luz (desde el nivel 5)
+Clic derecho: disparo de luz (desde el nivel 3; al farol encendido le devuelve luz)    ·    Q: campo de luz (desde el nivel 5)
 F11: pantalla completa"
 horizontal_alignment = 1
 

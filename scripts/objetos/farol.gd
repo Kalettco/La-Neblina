@@ -4,6 +4,9 @@ extends Area2D
 ## Al tocarlo la primera vez se enciende y guarda el progreso.
 ## Si es el farol activo y Lía está cerca con poca luz, la recarga hasta 70.
 ## Con clic derecho cerca del farol activo, la luz se llena hasta 100.
+## Acto 2: si una chispa golpea un farol ya encendido (aunque esté lejos), le devuelve
+## +20 de luz a Lía (un golpe por segundo por farol). Sirve en las arenas, disparando
+## al farol de la entrada a través de la puerta de raíces.
 ## Origen = centro inferior de la casilla (pie del farol).
 
 const RADIO_RECARGA: float = 180.0
@@ -12,6 +15,11 @@ const LIMITE_RECARGA: float = 70.0
 const RECARGA_MANUAL_POR_SEGUNDO: float = 120.0   # clic derecho: se llena en menos de 1 s
 const COLOR_APAGADO: Color = Color(0.16, 0.16, 0.18)
 const COLOR_ENCENDIDO: Color = Color(1.0, 0.6, 0.2)
+const RECARGA_CHISPA: float = 20.0
+const ESPERA_CHISPA: float = 1.0
+const COLOR_LUZ: Color = Color(1.0, 0.86, 0.55)
+
+var _espera_chispa: float = 0.0
 
 @onready var cabeza: ColorRect = $Visual/Cabeza
 @onready var luz: PointLight2D = $Luz
@@ -28,7 +36,29 @@ func _ready() -> void:
 	body_entered.connect(_al_entrar_cuerpo)
 
 
+## Una chispa golpeó el farol: si ya estaba encendido, devuelve luz a Lía.
+## Devuelve true si se quedó con la chispa; false si la deja pasar (farol apagado,
+## en espera, o Lía está al lado: así no le "roba" los disparos al pelear junto a él).
+func recibir_chispa() -> bool:
+	var jugador: Jugador = Juego.jugador
+	if not encendido or _espera_chispa > 0.0 or not is_instance_valid(jugador) or jugador.muerto:
+		return false
+	if jugador.global_position.distance_to(global_position) < RADIO_RECARGA:
+		return false
+	_espera_chispa = ESPERA_CHISPA
+	jugador.recargar(RECARGA_CHISPA)
+	Audio.sfx_farol()
+	Efectos.estallido(get_parent(), global_position + Vector2(0.0, -110.0), COLOR_LUZ, 18)
+	Efectos.estallido(jugador.get_parent(), jugador.global_position + Vector2(0.0, -42.0), COLOR_LUZ, 14)
+	Juego.toast("El farol te devolvió luz (+%d)." % int(RECARGA_CHISPA))
+	luz.enabled = true
+	luz.energy = 2.0
+	create_tween().tween_property(luz, "energy", 1.0, 0.4).finished.connect(_aplicar_aspecto)
+	return true
+
+
 func _physics_process(delta: float) -> void:
+	_espera_chispa = maxf(_espera_chispa - delta, 0.0)
 	if not activo:
 		return
 	var jugador: Jugador = Juego.jugador

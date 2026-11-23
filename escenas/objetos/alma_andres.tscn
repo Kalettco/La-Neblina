@@ -1,0 +1,24 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/objetos/alma_andres.gd" id="1_alma"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_alma"]
+radius = 30.0
+
+[node name="AlmaAndres" type="Area2D"]
+collision_layer = 16
+collision_mask = 2
+monitorable = false
+script = ExtResource("1_alma")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -40)
+shape = SubResource("CircleShape2D_alma")
+
+[node name="Visual" type="Node2D" parent="."]
+position = Vector2(0, -40)
+
+[node name="Luz" type="PointLight2D" parent="."]
+position = Vector2(0, -40)
+color = Color(1, 0.85, 0.45, 1)
+energy = 1.3

@@ -1,0 +1,30 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/enemigos/devorador.gd" id="1_devorador"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_ojo"]
+radius = 48.0
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_barrido"]
+size = Vector2(420, 110)
+
+[node name="Devorador" type="Area2D"]
+collision_layer = 4
+collision_mask = 2
+script = ExtResource("1_devorador")
+vida_maxima = 60
+dano_contacto = 0.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_ojo")
+
+[node name="Visual" type="Node2D" parent="."]
+
+[node name="Barrido" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 2
+monitorable = false
+monitoring = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Barrido"]
+shape = SubResource("RectangleShape2D_barrido")

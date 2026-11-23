@@ -5,6 +5,8 @@ extends CharacterBody2D
 
 # --- Movimiento ---
 @export var velocidad: float = 350.0          # px por segundo
+@export var velocidad_sprint: float = 560.0   # con Shift: corre y salta más lejos
+@export var salto_sprint: float = 1.08        # con Shift el salto es un poco más alto (~4 casillas)
 @export var aceleracion: float = 3000.0       # qué tan rápido arranca
 @export var friccion: float = 3200.0          # qué tan rápido frena
 
@@ -75,6 +77,8 @@ var _sacudida_fuerza: float = 0.0
 var _espera_disparo: float = 0.0
 var _disparo_pendiente: float = -1.0    # >= 0: segundos hasta que sale la chispa (cuadro 2 de "disparar")
 var _objetivo_disparo: Vector2 = Vector2.ZERO
+var _disparo_asistido: bool = false     # con Shift la chispa busca al enemigo más cercano al mouse
+const ANGULO_ASISTENCIA: float = 0.7    # radianes (~40°) alrededor de la dirección del mouse
 var tiempo_campo: float = 0.0           # > 0 mientras el campo de luz está activo
 var recarga_campo_restante: float = 0.0 # > 0 mientras el campo se recarga
 var _desde_clic_izq: float = 99.0       # segundos desde el último clic izquierdo / F
@@ -125,6 +129,7 @@ var entregando_luz: bool = false
 
 func _ready() -> void:
 	add_to_group("jugador")
+	_asegurar_accion_correr()
 	energia = energia_maxima
 	_preparar_luces()
 	_crear_animaciones()
@@ -186,7 +191,7 @@ func _procesar_salto(delta: float) -> void:
 		_buffer -= delta
 
 	if _buffer > 0.0 and _coyote > 0.0:
-		velocity.y = -fuerza_salto
+		velocity.y = -fuerza_salto * (salto_sprint if esta_corriendo() else 1.0)
 		_buffer = 0.0
 		_coyote = 0.0
 		impulsado = false
@@ -203,10 +208,32 @@ func _procesar_movimiento(delta: float) -> void:
 		return
 	var direccion: float = 0.0 if bloqueado else Input.get_axis("mover_izquierda", "mover_derecha")
 	if direccion != 0.0:
-		velocity.x = move_toward(velocity.x, direccion * velocidad, aceleracion * delta)
+		var maxima: float = velocidad_sprint if esta_corriendo() else velocidad
+		velocity.x = move_toward(velocity.x, direccion * maxima, aceleracion * delta)
 		mirando = 1 if direccion > 0.0 else -1
 	else:
 		velocity.x = move_toward(velocity.x, 0.0, friccion * delta)
+
+
+## Shift + moverse: corre (más rápido y salta más lejos). También sirve en el aire.
+func esta_corriendo() -> bool:
+	return shift_presionado() and not bloqueado and _sin_control <= 0.0 \
+		and Input.get_axis("mover_izquierda", "mover_derecha") != 0.0
+
+
+## Shift (acción "correr"; si el mapa de entradas no la tiene, se lee la tecla directo).
+func shift_presionado() -> bool:
+	return Input.is_action_pressed("correr") or Input.is_physical_key_pressed(KEY_SHIFT)
+
+
+## Si el proyecto se abrió con un project.godot viejo (sin "correr"), se agrega aquí.
+func _asegurar_accion_correr() -> void:
+	if InputMap.has_action("correr"):
+		return
+	InputMap.add_action("correr")
+	var tecla: InputEventKey = InputEventKey.new()
+	tecla.physical_keycode = KEY_SHIFT
+	InputMap.action_add_event("correr", tecla)
 
 
 # --- Linterna ---
@@ -238,6 +265,7 @@ func _procesar_disparo(delta: float) -> void:
 	if absf(raton.x - global_position.x) > 1.0:
 		mirando = 1 if raton.x > global_position.x else -1
 	_objetivo_disparo = raton
+	_disparo_asistido = shift_presionado()
 	_desde_disparo = 0.0
 	_iniciar_accion("disparar")
 	_disparo_pendiente = _retraso_disparo()
@@ -252,13 +280,48 @@ func _lanzar_chispa() -> void:
 	var origen: Vector2 = punto_linterna.global_position
 	var chispa: Node2D = ESCENA_CHISPA.instantiate()
 	chispa.position = origen
-	chispa.set("direccion", (_objetivo_disparo - origen).normalized())
+	var destino: Vector2 = _objetivo_disparo
+	if _disparo_asistido:
+		var enemigo: Node2D = _buscar_enemigo(origen, (_objetivo_disparo - origen).normalized())
+		if enemigo != null:
+			destino = enemigo.call("centro")
+			chispa.set("objetivo", enemigo)
+	chispa.set("direccion", (destino - origen).normalized())
 	chispa.set("velocidad", velocidad_chispa)
 	chispa.set("alcance", alcance_chispa)
 	chispa.set("dano", dano_chispa)
 	get_parent().add_child(chispa)
 	_ultima_chispa = chispa
 	Audio.sfx_disparo()
+
+
+## Puntería asistida (Shift): el enemigo vivo, al alcance y sin paredes en medio, más
+## cercano a la dirección del mouse (dentro de ~40°). Gana el de menor ángulo; a igual
+## ángulo, el más cercano.
+func _buscar_enemigo(origen: Vector2, direccion: Vector2) -> Node2D:
+	var mejor: Node2D = null
+	var mejor_puntaje: float = INF
+	var espacio: PhysicsDirectSpaceState2D = get_world_2d().direct_space_state
+	for nodo: Node in get_tree().get_nodes_in_group("enemigos"):
+		var enemigo: Node2D = nodo as Node2D
+		if enemigo == null or enemigo.get("derrotado"):
+			continue
+		var centro: Vector2 = enemigo.call("centro")
+		var hacia: Vector2 = centro - origen
+		var distancia: float = hacia.length()
+		if distancia > alcance_chispa or distancia < 1.0:
+			continue
+		var angulo: float = absf(direccion.angle_to(hacia))
+		if angulo > ANGULO_ASISTENCIA:
+			continue
+		var consulta: PhysicsRayQueryParameters2D = PhysicsRayQueryParameters2D.create(origen, centro, 1)
+		if not espacio.intersect_ray(consulta).is_empty():
+			continue
+		var puntaje: float = angulo + distancia / alcance_chispa * 0.3
+		if puntaje < mejor_puntaje:
+			mejor_puntaje = puntaje
+			mejor = enemigo
+	return mejor
 
 
 ## Segundos desde el cuadro 1 hasta el cuadro 2 de "disparar" (0 si no hay arte).
@@ -315,7 +378,7 @@ func _anular_ultimo_disparo() -> void:
 func _activar_campo() -> void:
 	energia -= costo_campo
 	tiempo_campo = duracion_campo
-	recarga_campo_restante = recarga_campo
+	recarga_campo_restante = 0.0 if Juego.campo_sin_recarga else recarga_campo
 	_iniciar_accion("campo")
 	_desde_clic_izq = 99.0
 	var centro: Vector2 = global_position + Vector2(0.0, -42.0)
@@ -353,6 +416,7 @@ func _procesar_linterna(delta: float) -> void:
 		_colocar_punto_linterna()
 		angulo_cono = (raton - punto_linterna.global_position).angle()
 		cono.global_rotation = angulo_cono
+		cono.texture_scale = alcance_actual() / (TAMANO_TEXTURA_CONO / 2.0)
 		energia = maxf(energia - gasto_por_segundo * delta, 0.0)
 		if energia <= 0.0:
 			linterna_encendida = false
@@ -370,10 +434,15 @@ func esta_iluminado(punto_global: Vector2) -> bool:
 	var distancia: float = hacia_punto.length()
 	if distancia <= radio_pies:
 		return true
-	if distancia > alcance_luz:
+	if distancia > alcance_actual():
 		return false
 	var diferencia: float = absf(wrapf(hacia_punto.angle() - angulo_cono, -PI, PI))
 	return diferencia < apertura_luz
+
+
+## Alcance del cono: en la "noche total" del jefe la linterna solo llega al 40 %.
+func alcance_actual() -> float:
+	return alcance_luz * (0.4 if Juego.noche_total else 1.0)
 
 
 func morir(mensaje: String) -> void:
@@ -641,6 +710,8 @@ func _actualizar_animacion(delta: float) -> void:
 		sprite.frame = 0
 		sprite.play(real)
 	_reiniciar = ""
+	# Al correr, los pasos van más rápido
+	sprite.speed_scale = velocidad_sprint / velocidad if nombre == "caminar" and absf(velocity.x) > velocidad + 20.0 else 1.0
 
 
 ## Prioridad: desmayo > entregar > dano > campo/disparar > saltar/caer > aterrizar > caminar > idle.

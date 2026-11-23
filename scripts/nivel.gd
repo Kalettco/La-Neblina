@@ -47,6 +47,8 @@ const ESCENA_CORRIENTE: PackedScene = preload("res://escenas/objetos/corriente.t
 const ESCENA_MURCIELAGO: PackedScene = preload("res://escenas/enemigos/murcielago.tscn")
 const ESCENA_GOLEM: PackedScene = preload("res://escenas/enemigos/golem.tscn")
 const ESCENA_REINA: PackedScene = preload("res://escenas/objetos/luciernaga_reina.tscn")
+const ESCENA_FAUCES: PackedScene = preload("res://escenas/objetos/fauces.tscn")
+const ESCENA_DEVORADOR: PackedScene = preload("res://escenas/enemigos/devorador.tscn")
 
 # Terrenos del TileSet provisional (columna del atlas)
 const TERRENO_BOSQUE: int = 0
@@ -66,6 +68,7 @@ const COLORES_OSCURIDAD: Dictionary = {
 const COLOR_ENTREGA: Color = Color("050508")
 const COLOR_CURACION: Color = Color("7d8aa6")   # la oscuridad se aclara al sanar el árbol
 const COLOR_CAMPO: Color = Color("9aa6c8")      # tono claro mientras dura el campo de luz
+const COLOR_NOCHE_TOTAL: Color = Color("020204") # ataque "noche total" del jefe
 const COLOR_FONDO_CUEVA: Color = Color("17130f")
 const VELOCIDAD_COLOR: float = 6.0     # el color de la noche cambia en ~0,5 s
 const MULTIPLICADOR_GRACIA_COPA: float = 3.0   # plataformas de luz en la copa: 0,5 s x 3
@@ -277,6 +280,35 @@ func reina(x: int, y: int, id_arena: String = "") -> void:
 	_colocar(nueva, x, y, objetos)
 
 
+## Fauces de la Bruma: paredes que se cierran por turnos sobre un pasillo.
+## Columnas x..x+ancho-1, filas y0..y1. "desfase" (0 a 1) para que se turnen.
+func fauces(x: int, y0: int, y1: int, ancho: int, desfase: float) -> void:
+	var nuevas: Node2D = ESCENA_FAUCES.instantiate()
+	nuevas.set("ancho_casillas", ancho)
+	nuevas.set("alto_casillas", y1 - y0 + 1)
+	nuevas.set("desfase", desfase)
+	nuevas.position = Vector2(x * CASILLA, y0 * CASILLA)
+	objetos.add_child(nuevas)
+
+
+## Lámpara de luciérnagas: recarga la luz de Lía mientras está cerca (no es punto de control).
+func lampara(x: int, y: int) -> void:
+	var nueva: Node2D = Node2D.new()
+	nueva.set_script(preload("res://scripts/objetos/lampara.gd"))
+	_colocar(nueva, x, y, objetos)
+
+
+## Jefe final: el Devorador de Luz. Su arena son las columnas x0..x1 y las filas libres
+## y0..y1 (el suelo es la fila y1 + 1). Cierra las puertas de arena con id "jefe".
+func jefe(x0: int, x1: int, y0: int, y1: int) -> void:
+	var nuevo: Node2D = ESCENA_DEVORADOR.instantiate()
+	nuevo.set("x0", x0)
+	nuevo.set("x1", x1)
+	nuevo.set("y0", y0)
+	nuevo.set("y1", y1)
+	enemigos.add_child(nuevo)
+
+
 ## (También los usa la arena de oleadas.)
 static func crear_murcielago(indice: int, cantidad: int) -> Node2D:
 	var nuevo: Node2D = ESCENA_MURCIELAGO.instantiate()
@@ -380,7 +412,9 @@ func _actualizar_zona(delta: float) -> void:
 	elif Juego.entregando_luz:
 		objetivo = COLOR_ENTREGA
 	elif Juego.campo_activo():
-		objetivo = COLOR_CAMPO
+		objetivo = COLOR_CAMPO   # el campo de luz vence incluso a la noche total
+	elif Juego.noche_total:
+		objetivo = COLOR_NOCHE_TOTAL
 	noche.color = noche.color.lerp(objetivo, minf(1.0, VELOCIDAD_COLOR * delta))
 
 

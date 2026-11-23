@@ -51,6 +51,8 @@ var limite_vacio: float = 1600.0   # si Lía cae más abajo de esta y, muere (lo
 var todas_asustadas: bool = false  # durante la entrega de luz final
 var entregando_luz: bool = false   # la pantalla se oscurece casi por completo
 var curando: bool = false          # el Árbol Madre está sanando: la oscuridad se aclara
+var noche_total: bool = false      # ataque del jefe: todo casi negro y la linterna llega al 40 %
+var campo_sin_recarga: bool = false   # pelea con el jefe final: Q se puede usar sin esperar
 var muriendo: bool = false
 var nivel_terminado: bool = false
 
@@ -282,6 +284,8 @@ func iniciar_nivel(nuevo_nivel: Node) -> void:
 	todas_asustadas = false
 	entregando_luz = false
 	curando = false
+	noche_total = false
+	campo_sin_recarga = false
 	nivel_terminado = false
 	_cartel_forzado = ""
 	_texto_cartel_mostrado = ""
