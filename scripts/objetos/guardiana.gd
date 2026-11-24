@@ -4,10 +4,12 @@ extends Area2D
 ## Origen = centro inferior de la casilla.
 
 const COLOR_GUARDIANA: Color = Color(0.45, 1.0, 0.85)
+const ARTE: String = "res://assets/sprites/guardiana.png"   # cuadros de 48 x 48
 
 @onready var nucleo: Node2D = $Visual
 @onready var anillo: Line2D = $Visual/Anillo
 @onready var luz: PointLight2D = $Luz
+@onready var sprite: AnimatedSprite2D = $Visual/Sprite
 
 var _tiempo: float = 0.0
 var _rescatada: bool = false
@@ -22,6 +24,7 @@ func _ready() -> void:
 	for i in range(25):
 		var angulo: float = TAU * i / 24.0
 		anillo.add_point(Vector2(cos(angulo), sin(angulo)) * 20.0)
+	_usar_arte()
 	body_entered.connect(_al_entrar_cuerpo)
 
 
@@ -46,3 +49,14 @@ func _al_entrar_cuerpo(cuerpo: Node2D) -> void:
 	Audio.sfx_guardiana()
 	Efectos.estallido(get_parent(), global_position + Vector2(0.0, -24.0), COLOR_GUARDIANA, 40)
 	queue_free()
+
+
+## Si guardiana.png sirve, se muestra el Sprite y se oculta el marcador de color.
+func _usar_arte() -> void:
+	var cuadros: SpriteFrames = Tiras.nuevas()
+	if not Tiras.agregar(cuadros, ARTE, 48, 48, 8.0, true, "flotar"):
+		return
+	sprite.sprite_frames = cuadros
+	sprite.visible = true
+	Tiras.ocultar_marcador(nucleo, sprite)
+	sprite.play("flotar")

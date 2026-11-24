@@ -9,6 +9,7 @@ const ESCENA_CONFIGURACION: PackedScene = preload("res://escenas/ui/pantalla_con
 const ESCENA_SELECTOR: PackedScene = preload("res://escenas/ui/selector_nivel.tscn")
 
 @onready var bosque: Control = $Bosque
+@onready var luciernagas: CPUParticles2D = $Luciernagas
 @onready var boton_nuevo: Button = $Menu/Caja/Botones/Nuevo
 @onready var boton_continuar: Button = $Menu/Caja/Botones/Continuar
 @onready var boton_configuracion: Button = $Menu/Caja/Botones/Configuracion
@@ -22,6 +23,7 @@ func _ready() -> void:
 	boton_configuracion.pressed.connect(_al_configurar)
 	boton_salir.pressed.connect(_al_salir)
 	_crear_bosque()
+	_usar_arte_luciernagas()
 	boton_nuevo.grab_focus()
 	Audio.musica("titulo")
 
@@ -82,3 +84,13 @@ func _capa_arboles(azar: RandomNumberGenerator, color: Color, alto_min: float, a
 		])
 		bosque.add_child(arbol)
 		x += separacion * azar.randf_range(0.6, 1.4)
+
+
+## Si luciernaga.png sirve, las partículas usan su primer cuadro en vez de puntos.
+func _usar_arte_luciernagas() -> void:
+	var textura: AtlasTexture = Tiras.primer_cuadro(LuciernagaPequena.ARTE, 24, 24)
+	if textura == null:
+		return
+	luciernagas.texture = textura
+	luciernagas.scale_amount_min = 0.5
+	luciernagas.scale_amount_max = 0.9

@@ -8,6 +8,8 @@ const TIEMPO_ENTREGA: float = 3.0
 const TIEMPO_CURACION: float = 5.0
 const GASTO_ENTREGA: float = 40.0        # luz por segundo mientras se mantiene E
 const CENTRO_COPA: Vector2 = Vector2(0.0, -480.0)
+const ARTE_ATRAPADO: String = "res://assets/sprites/andres_atrapado.png"    # cuadros de 96 x 48
+const ARTE_DESPIERTA: String = "res://assets/sprites/andres_despierta.png"  # cuadros de 96 x 48
 
 const COLOR_TRONCO_SECO: Color = Color(0.3, 0.27, 0.25)
 const COLOR_COPA_SECA: Color = Color(0.26, 0.25, 0.24)
@@ -23,6 +25,8 @@ const TEXTO_ENTREGANDO: String = "Sigue presionando E. Todo se queda a oscuras..
 @onready var tronco: CanvasItem = $Visual/Tronco
 @onready var raices: CanvasItem = $Visual/Raices
 @onready var copa: CanvasItem = $Visual/Copa
+@onready var andres: Node2D = $Visual/Andres
+@onready var sprite_andres: AnimatedSprite2D = $Visual/Andres/Sprite
 @onready var raiz_andres: CanvasItem = $Visual/RaizAndres
 @onready var brillo: PointLight2D = $Brillo
 @onready var chispas_entrega: CPUParticles2D = $ChispasEntrega
@@ -44,6 +48,7 @@ func _ready() -> void:
 	tronco.modulate = COLOR_TRONCO_SECO
 	raices.modulate = COLOR_TRONCO_SECO
 	copa.modulate = COLOR_COPA_SECA
+	_preparar_andres()
 
 
 func _physics_process(delta: float) -> void:
@@ -131,6 +136,7 @@ func _curar(jugador: Jugador) -> void:
 	tween.tween_property(copa, "modulate", COLOR_COPA_SANA, 1.3)
 	tween.parallel().tween_property(brillo, "energy", 1.6, 1.3)
 	tween.parallel().tween_property(brillo, "color", COLOR_BRILLO_SANO, 1.3)
+	tween.tween_callback(_despertar_andres)
 	tween.tween_property(raiz_andres, "modulate:a", 0.0, 1.0)
 	tween.tween_interval(TIEMPO_CURACION - 4.5)
 	tween.tween_callback(_terminar_curacion)
@@ -141,3 +147,29 @@ func _terminar_curacion() -> void:
 		var tween: Tween = sombra.create_tween()
 		tween.tween_property(sombra, "modulate:a", 0.0, 0.8)
 	Juego.completar_arbol()
+
+
+# --- Andrés (AnimatedSprite2D Visual/Andres/Sprite, origen en el suelo) ---
+
+## Arma "atrapado" (se repite) y "despierta" (una vez). andres_atrapado.png ya trae
+## las raíces dibujadas: si sirve, se ocultan el marcador y la raíz hecha por código.
+func _preparar_andres() -> void:
+	var cuadros: SpriteFrames = Tiras.nuevas()
+	Tiras.agregar(cuadros, ARTE_ATRAPADO, 96, 48, 3.0, true, "atrapado")
+	Tiras.agregar(cuadros, ARTE_DESPIERTA, 96, 48, 6.0, false, "despierta")
+	sprite_andres.sprite_frames = cuadros
+	if cuadros.has_animation("atrapado"):
+		sprite_andres.visible = true
+		Tiras.ocultar_marcador(andres, sprite_andres)
+		raiz_andres.visible = false
+		sprite_andres.play("atrapado")
+
+
+## Al terminar de sanar el árbol: "despierta" una vez y queda en el último cuadro
+## (en el Acto 2 Andrés sigue así, quieto y sin alma).
+func _despertar_andres() -> void:
+	if not sprite_andres.sprite_frames.has_animation("despierta"):
+		return
+	sprite_andres.visible = true
+	Tiras.ocultar_marcador(andres, sprite_andres)
+	sprite_andres.play("despierta")

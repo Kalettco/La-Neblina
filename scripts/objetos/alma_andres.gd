@@ -5,9 +5,11 @@ extends Area2D
 
 const COLOR_ALMA: Color = Color(1.0, 0.85, 0.45)
 const ALTURA: float = -40.0
+const ARTE: String = "res://assets/sprites/alma_andres.png"   # cuadros de 48 x 48
 
 @onready var visual: Node2D = $Visual
 @onready var luz: PointLight2D = $Luz
+@onready var sprite: AnimatedSprite2D = $Visual/Sprite
 
 var _tiempo: float = 0.0
 var _tocada: bool = false
@@ -34,6 +36,7 @@ func _ready() -> void:
 		var angulo: float = TAU * i / 24.0
 		_anillo.add_point(Vector2(cos(angulo), sin(angulo)) * 34.0)
 	visual.add_child(_anillo)
+	_usar_arte()
 	visual.modulate.a = 0.0
 	create_tween().tween_property(visual, "modulate:a", 1.0, 1.0)
 
@@ -60,3 +63,15 @@ func _tocar(jugador: Jugador) -> void:
 	create_tween().tween_property(visual, "modulate:a", 0.0, 0.6)
 	await get_tree().create_timer(1.5).timeout
 	Juego.completar_juego()
+
+
+## Si alma_andres.png sirve, se muestra el Sprite y se oculta el orbe de color.
+func _usar_arte() -> void:
+	var cuadros: SpriteFrames = Tiras.nuevas()
+	if not Tiras.agregar(cuadros, ARTE, 48, 48, 8.0, true, "latir"):
+		return
+	sprite.sprite_frames = cuadros
+	sprite.material = Efectos.material_sin_sombra()
+	sprite.visible = true
+	Tiras.ocultar_marcador(visual, sprite)
+	sprite.play("latir")

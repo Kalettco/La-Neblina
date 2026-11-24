@@ -6,11 +6,13 @@ extends Area2D
 
 const COLOR_REINA: Color = Color(1.0, 0.85, 0.4)
 const ALTURA: float = -64.0
+const ARTE: String = "res://assets/sprites/luciernaga_reina.png"   # cuadros de 96 x 96
 
 var id_arena: String = ""
 
 @onready var visual: Node2D = $Visual
 @onready var luz: PointLight2D = $Luz
+@onready var sprite: AnimatedSprite2D = $Visual/Sprite
 
 var _aparecida: bool = false
 var _tocada: bool = false
@@ -22,6 +24,7 @@ func _ready() -> void:
 	luz.texture = Efectos.textura_radial()
 	luz.texture_scale = Efectos.escala_para_radio(280.0)
 	_construir_visual()
+	_usar_arte()
 	if id_arena == "":
 		_aparecida = true
 	else:
@@ -97,3 +100,15 @@ func _construir_visual() -> void:
 		punto.position = Vector2(-15.0 + i * 12.0, -44.0 - (4.0 if i == 1 else 0.0))
 		punto.material = Efectos.material_sin_sombra()
 		visual.add_child(punto)
+
+
+## Si luciernaga_reina.png sirve, se muestra el Sprite y se oculta el marcador.
+func _usar_arte() -> void:
+	var cuadros: SpriteFrames = Tiras.nuevas()
+	if not Tiras.agregar(cuadros, ARTE, 96, 96, 8.0, true, "flotar"):
+		return
+	sprite.sprite_frames = cuadros
+	sprite.material = Efectos.material_sin_sombra()
+	sprite.visible = true
+	Tiras.ocultar_marcador(visual, sprite)
+	sprite.play("flotar")

@@ -618,31 +618,17 @@ func _crear_textura_cono() -> ImageTexture:
 
 # --- Animación (AnimatedSprite2D "Sprite") ---
 
-## Arma las SpriteFrames cortando cada tira en cuadros de 72 x 96.
+## Arma las SpriteFrames cortando cada tira en cuadros de 72 x 96 (con Tiras).
 ## Si un archivo falta o tiene medidas inválidas, esa animación usa "idle".
 ## Si falta lia_idle.png, se oculta el Sprite y se muestran Cuerpo y Linterna.
 func _crear_animaciones() -> void:
 	if sprite == null:
 		return
-	var cuadros: SpriteFrames = SpriteFrames.new()
-	cuadros.remove_animation("default")
+	var cuadros: SpriteFrames = Tiras.nuevas()
 	for nombre: String in ANIMACIONES:
 		var datos: Dictionary = ANIMACIONES[nombre]
-		var tira: Texture2D = _cargar_tira(nombre)
-		if tira == null:
-			continue
-		@warning_ignore("integer_division")
-		var cantidad: int = tira.get_width() / ANCHO_CUADRO
-		if datos.has("max_cuadros"):
-			cantidad = mini(cantidad, int(datos["max_cuadros"]))
-		cuadros.add_animation(nombre)
-		cuadros.set_animation_speed(nombre, float(datos["fps"]))
-		cuadros.set_animation_loop(nombre, bool(datos["repite"]))
-		for i in range(cantidad):
-			var cuadro: AtlasTexture = AtlasTexture.new()
-			cuadro.atlas = tira
-			cuadro.region = Rect2(i * ANCHO_CUADRO, 0, ANCHO_CUADRO, ALTO_CUADRO)
-			cuadros.add_frame(nombre, cuadro)
+		Tiras.agregar(cuadros, RUTA_SPRITE % nombre, ANCHO_CUADRO, ALTO_CUADRO,
+			float(datos["fps"]), bool(datos["repite"]), nombre, int(datos.get("max_cuadros", 0)))
 	sprite.sprite_frames = cuadros
 	_sin_arte = not cuadros.has_animation("idle")
 	sprite.visible = not _sin_arte
@@ -653,25 +639,6 @@ func _crear_animaciones() -> void:
 	if not _sin_arte:
 		sprite.play("idle")
 		_ultima_animacion = "idle"
-
-
-## Carga lia_<nombre>.png. Devuelve null (con aviso) si falta o si sus medidas no sirven.
-func _cargar_tira(nombre: String) -> Texture2D:
-	var ruta: String = RUTA_SPRITE % nombre
-	if not ResourceLoader.exists(ruta):
-		push_warning("Falta %s: se usa \"idle\" en su lugar." % ruta)
-		return null
-	var tira: Texture2D = load(ruta) as Texture2D
-	if tira == null:
-		push_warning("No se pudo cargar %s: se usa \"idle\" en su lugar." % ruta)
-		return null
-	var ancho: int = tira.get_width()
-	var alto: int = tira.get_height()
-	if alto != ALTO_CUADRO or ancho < ANCHO_CUADRO or ancho % ANCHO_CUADRO != 0:
-		push_warning("%s mide %d x %d: el alto debe ser %d y el ancho múltiplo de %d. Se usa \"idle\"." \
-			% [ruta, ancho, alto, ALTO_CUADRO, ANCHO_CUADRO])
-		return null
-	return tira
 
 
 ## Duración en segundos de una animación (0 si no existe).
